@@ -95,7 +95,110 @@ function AdminLogin({ onLogin }) {
   );
 }
 
-// 2. Admin Dashboard
+// 2. Requests Manager Component (الطلبات)
+function RequestsManager() {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const typeLabels = {
+    loan: "سلفة",
+    help: "مساعدة",
+    condolence: "عزاء",
+    wedding: "نقوط زواج"
+  };
+
+  const fetchRequests = async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
+      const res = await fetch(`${apiUrl}/api/admin/requests`);
+      const data = await res.json();
+      setRequests(data);
+    } catch (err) {
+      console.error("خطأ في جلب الطلبات:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const handleUpdateStatus = async (id, newStatus) => {
+    if (!window.confirm(`هل أنت متأكد من ${newStatus === 'approved' ? 'قبول' : 'رفض'} هذا الطلب؟`)) return;
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
+      const res = await fetch(`${apiUrl}/api/admin/requests/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (res.ok) {
+        setRequests(requests.map(req => req.id === id ? { ...req, status: newStatus } : req));
+      } else {
+        alert("تعذر تحديث الحالة من السيرفر");
+      }
+    } catch (error) {
+      alert("تعذر الاتصال بالسيرفر");
+    }
+  };
+
+  if (loading) return <div style={{textAlign:"center", padding:20, color:C.muted}}>⏳ جاري تحميل الطلبات...</div>;
+
+  return (
+    <Card style={{marginTop: 24, borderTop:`3px solid ${C.accent}`}}>
+      <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>طلبات الأعضاء (سلف ومساعدات)</div>
+      
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {requests.map(req => (
+          <div key={req.id} style={{ 
+            background: C.surf2, padding: 16, borderRadius: 12, 
+            border: `1px solid ${C.border}`, display:"flex", flexDirection:"column", gap:12
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{fontSize:20}}>{req.type==='wedding'?'💍':req.type==='condolence'?'🕊️':req.type==='help'?'🤝':'💰'}</div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize:14, color:C.text }}>{req.full_name}</h3>
+                  <div style={{fontSize:11, color:C.muted}}>{req.phone_number}</div>
+                </div>
+              </div>
+              <span style={{ 
+                padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                background: req.status === 'pending' ? `${C.gold}20` : req.status === 'approved' ? `${C.green}20` : `${C.red}20`,
+                color: req.status === 'pending' ? C.gold : req.status === 'approved' ? C.green : C.red,
+                border: `1px solid ${req.status === 'pending' ? C.gold : req.status === 'approved' ? C.green : C.red}40`
+              }}>
+                {req.status === 'pending' ? 'قيد الانتظار' : req.status === 'approved' ? 'تم القبول' : 'مرفوض'}
+              </span>
+            </div>
+            
+            <div style={{ fontSize: 12, color: C.text, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, background:C.surf, padding:12, borderRadius:8 }}>
+              <div><span style={{color:C.muted}}>النوع:</span> {typeLabels[req.type]}</div>
+              <div><span style={{color:C.muted}}>المبلغ:</span> <strong style={{color:C.gold}}>{Number(req.amount).toLocaleString("en-US")} د.أ</strong></div>
+              <div><span style={{color:C.muted}}>تاريخ الحاجة:</span> {req.timing || "غير محدد"}</div>
+              {req.type === 'loan' && <div><span style={{color:C.muted}}>السداد:</span> {req.repayment_plan} أشهر</div>}
+              <div style={{ gridColumn: "1 / -1", lineHeight: 1.6 }}><span style={{color:C.muted}}>السبب:</span> {req.reason}</div>
+              <div style={{ gridColumn: "1 / -1", fontSize: 10, color: C.dim }}>تاريخ التقديم: {new Date(req.created_at).toLocaleDateString('ar-JO')}</div>
+            </div>
+
+            {req.status === 'pending' && (
+              <div style={{ display: "flex", gap: 10, marginTop:4 }}>
+                <Btn onClick={() => handleUpdateStatus(req.id, 'approved')} variant="green" style={{flex:1}}>✅ قبول الطلب</Btn>
+                <Btn onClick={() => handleUpdateStatus(req.id, 'rejected')} variant="red" style={{flex:1}}>❌ رفض الطلب</Btn>
+              </div>
+            )}
+          </div>
+        ))}
+        {requests.length === 0 && <div style={{ textAlign: "center", color: C.muted, padding:20 }}>لا توجد طلبات لعرضها</div>}
+      </div>
+    </Card>
+  );
+}
+
+// 3. Admin Dashboard
 function AdminDashboard({ onLogout }) {
   const [selectedImage, setSelectedImage] = useState(null);
   const [pendingReceipts, setPendingReceipts] = useState([]);
@@ -220,22 +323,14 @@ function AdminDashboard({ onLogout }) {
         </Card>
       )}
 
-      <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:16, marginBottom:24}}>
-        <Card style={{borderTop:`3px solid ${C.gold}`}}>
-          <div style={{fontSize:12, color:C.muted, marginBottom:8}}>إيصالات معلقة</div>
-          <div style={{fontSize:28, fontWeight:700, fontFamily:"'IBM Plex Mono',monospace", color:C.gold}}>
-            {isLoading ? "..." : pendingReceipts.length}
-          </div>
-        </Card>
-      </div>
-
+      {/* الإيصالات المعلقة */}
       <Card>
         <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>الإيصالات بانتظار الاعتماد (المراجعة)</div>
         
         {isLoading ? (
-          <div style={{textAlign:"center", padding:40, color:C.muted, fontSize:13}}>⏳ جاري جلب الطلبات...</div>
+          <div style={{textAlign:"center", padding:40, color:C.muted, fontSize:13}}>⏳ جاري جلب الإيصالات...</div>
         ) : pendingReceipts.length === 0 ? (
-          <div style={{textAlign:"center", padding:40, color:C.muted, fontSize:13}}>لا توجد طلبات معلقة حالياً ✅</div>
+          <div style={{textAlign:"center", padding:40, color:C.muted, fontSize:13}}>لا توجد إيصالات معلقة حالياً ✅</div>
         ) : (
           <div style={{display:"flex", flexDirection:"column", gap:12}}>
             {pendingReceipts.map(rec => (
@@ -264,6 +359,9 @@ function AdminDashboard({ onLogout }) {
         )}
       </Card>
 
+      {/* قسم الطلبات الجديد */}
+      <RequestsManager />
+
       {selectedImage && (
         <div onClick={() => setSelectedImage(null)} style={{position:"fixed", inset:0, background:"rgba(0,0,0,0.9)", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", padding:20, cursor:"zoom-out"}}>
           <img src={selectedImage} alt="Receipt" style={{maxWidth:"100%", maxHeight:"90vh", borderRadius:8, border:`2px solid ${C.border}`}} />
@@ -274,6 +372,7 @@ function AdminDashboard({ onLogout }) {
   );
 }
 
+// ── MAIN APP EXPORT ───────────────────────────────────────────────────────
 export default function App() {
   const [isAdminAuth, setIsAdminAuth] = useState(false);
 
