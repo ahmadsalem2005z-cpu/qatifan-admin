@@ -237,6 +237,19 @@ function AdminDashboard({ onLogout }) {
     } catch (err) { alert("تعذر الاتصال بالسيرفر"); }
   };
 
+  // دالة رفض الإيصال الجديدة
+  const handleRejectReceipt = async (receiptId) => {
+    if (!window.confirm("هل أنت متأكد من رفض هذا الإيصال؟")) return;
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
+      const res = await fetch(`${apiUrl}/api/admin/reject-receipt/${receiptId}`, { method: 'POST' });
+      if (res.ok) {
+        setPendingReceipts(prev => prev.filter(rec => rec.id !== receiptId));
+        alert("✅ تم رفض الإيصال وإزالته من القائمة!");
+      } else alert("❌ حدث خطأ أثناء الرفض");
+    } catch (err) { alert("تعذر الاتصال بالسيرفر"); }
+  };
+
   const handleAddExpense = async () => {
     if (!expLabel || !expAmount) return alert("⚠️ الرجاء تعبئة وصف وقيمة المصروف");
     setIsSubmittingExp(true);
@@ -351,7 +364,9 @@ function AdminDashboard({ onLogout }) {
                 <div style={{display:"flex", alignItems:"center", gap:12}}>
                   <div style={{fontSize:16, fontWeight:700, fontFamily:"'IBM Plex Mono',monospace", color:C.gold, marginLeft:16}}>{Number(rec.amount).toLocaleString("en-US")} د.أ</div>
                   <Btn variant="green" onClick={() => handleApprove(rec.id)}>اعتماد الدفعة</Btn>
-                  <Btn variant="red">رفض</Btn>
+                  
+                  {/* هنا تم ربط زر الرفض بالدالة */}
+                  <Btn variant="red" onClick={() => handleRejectReceipt(rec.id)}>رفض</Btn>
                 </div>
               </div>
             ))}
@@ -359,7 +374,7 @@ function AdminDashboard({ onLogout }) {
         )}
       </Card>
 
-      {/* قسم الطلبات الجديد */}
+      {/* قسم الطلبات */}
       <RequestsManager />
 
       {selectedImage && (
