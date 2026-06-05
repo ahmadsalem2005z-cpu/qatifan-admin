@@ -164,7 +164,7 @@ function AdminDashboard({ onLogout }) {
       let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
       
       // عناوين الأعمدة
-      csvContent += "اسم العضو,رقم الجوال,حالة العضوية,إجمالي المدفوعات (ر.س),الذمة المستحقة (ر.س)\n";
+      csvContent += "اسم العضو,رقم الجوال,حالة العضوية,إجمالي المدفوعات (د.أ),الذمة المستحقة (د.أ)\n";
 
       // تعبئة البيانات
       data.forEach(row => {
@@ -221,7 +221,7 @@ function AdminDashboard({ onLogout }) {
           </div>
 
           <Input label="وصف المصروف *" placeholder="مثال: مساعدة زواج للعريس فلان..." value={expLabel} onChange={setExpLabel} />
-          <Input label="المبلغ (ر.س) *" type="number" placeholder="1000" value={expAmount} onChange={setExpAmount} />
+          <Input label="المبلغ (د.أ) *" type="number" placeholder="1000" value={expAmount} onChange={setExpAmount} />
 
           <Btn onClick={handleAddExpense} style={{width:"100%"}} variant="primary">
             {isSubmittingExp ? "⏳ جاري الخصم..." : "✔️ تأكيد سحب المبلغ من الصندوق"}
@@ -265,7 +265,7 @@ function AdminDashboard({ onLogout }) {
                 </div>
                 
                 <div style={{display:"flex", alignItems:"center", gap:12}}>
-                  <div style={{fontSize:16, fontWeight:700, fontFamily:"'IBM Plex Mono',monospace", color:C.gold, marginLeft:16}}>{rec.amount} ر.س</div>
+                  <div style={{fontSize:16, fontWeight:700, fontFamily:"'IBM Plex Mono',monospace", color:C.gold, marginLeft:16}}>{rec.amount} د.أ</div>
                   <Btn variant="green" onClick={() => handleApprove(rec.id)}>اعتماد الدفعة</Btn>
                   <Btn variant="red">رفض</Btn>
                 </div>
