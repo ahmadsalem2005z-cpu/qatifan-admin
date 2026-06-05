@@ -101,7 +101,6 @@ function AdminDashboard({ onLogout }) {
   const [pendingReceipts, setPendingReceipts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // حالات إضافة المصروف الجديد
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [expCategory, setExpCategory] = useState("wedding");
   const [expLabel, setExpLabel] = useState("");
@@ -153,25 +152,19 @@ function AdminDashboard({ onLogout }) {
     setIsSubmittingExp(false);
   };
 
-  // دالة تحميل التقرير
   const downloadReport = async () => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
       const res = await fetch(`${apiUrl}/api/admin/reports/members`);
       const data = await res.json();
 
-      // إضافة دعم اللغة العربية في ملفات CSV (BOM)
       let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-      
-      // عناوين الأعمدة
       csvContent += "اسم العضو,رقم الجوال,حالة العضوية,إجمالي المدفوعات (د.أ),الذمة المستحقة (د.أ)\n";
 
-      // تعبئة البيانات
       data.forEach(row => {
         csvContent += `${row.full_name},${row.phone_number},${row.membership_status === 'active' ? 'نشط' : 'غير نشط'},${row.total_paid},${row.total_debt}\n`;
       });
 
-      // إنشاء رابط التحميل والضغط عليه برمجياً
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
@@ -189,7 +182,6 @@ function AdminDashboard({ onLogout }) {
     <div className="anim" style={{padding:"20px", maxWidth:800, margin:"0 auto"}}>
       <style>{G}</style>
       
-      {/* Header */}
       <header style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24, paddingBottom:16, borderBottom:`1px solid ${C.border}`, flexWrap: "wrap", gap: "10px"}}>
         <div>
           <h1 style={{fontSize:20, color:C.accent}}>لوحة تحكم المدير</h1>
@@ -206,7 +198,6 @@ function AdminDashboard({ onLogout }) {
         </div>
       </header>
 
-      {/* قسم إضافة المصروف (يظهر عند الضغط على الزر) */}
       {showExpenseForm && (
         <Card style={{marginBottom:24, borderTop:`3px solid ${C.accent}`}} className="anim">
           <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>تسجيل مصروف جديد</div>
@@ -229,7 +220,6 @@ function AdminDashboard({ onLogout }) {
         </Card>
       )}
 
-      {/* Stats */}
       <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:16, marginBottom:24}}>
         <Card style={{borderTop:`3px solid ${C.gold}`}}>
           <div style={{fontSize:12, color:C.muted, marginBottom:8}}>إيصالات معلقة</div>
@@ -239,7 +229,6 @@ function AdminDashboard({ onLogout }) {
         </Card>
       </div>
 
-      {/* Pending Receipts Table */}
       <Card>
         <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>الإيصالات بانتظار الاعتماد (المراجعة)</div>
         
@@ -265,7 +254,7 @@ function AdminDashboard({ onLogout }) {
                 </div>
                 
                 <div style={{display:"flex", alignItems:"center", gap:12}}>
-                  <div style={{fontSize:16, fontWeight:700, fontFamily:"'IBM Plex Mono',monospace", color:C.gold, marginLeft:16}}>{rec.amount} د.أ</div>
+                  <div style={{fontSize:16, fontWeight:700, fontFamily:"'IBM Plex Mono',monospace", color:C.gold, marginLeft:16}}>{Number(rec.amount).toLocaleString("en-US")} د.أ</div>
                   <Btn variant="green" onClick={() => handleApprove(rec.id)}>اعتماد الدفعة</Btn>
                   <Btn variant="red">رفض</Btn>
                 </div>
@@ -275,7 +264,6 @@ function AdminDashboard({ onLogout }) {
         )}
       </Card>
 
-      {/* Modal للصورة */}
       {selectedImage && (
         <div onClick={() => setSelectedImage(null)} style={{position:"fixed", inset:0, background:"rgba(0,0,0,0.9)", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", padding:20, cursor:"zoom-out"}}>
           <img src={selectedImage} alt="Receipt" style={{maxWidth:"100%", maxHeight:"90vh", borderRadius:8, border:`2px solid ${C.border}`}} />
@@ -286,7 +274,6 @@ function AdminDashboard({ onLogout }) {
   );
 }
 
-// ── MAIN APP ──────────────────────────────────────────────────────────────
 export default function App() {
   const [isAdminAuth, setIsAdminAuth] = useState(false);
 
