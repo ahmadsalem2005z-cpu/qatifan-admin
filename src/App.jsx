@@ -47,24 +47,26 @@ function Btn({ children, onClick, variant="primary", style={} }) {
   );
 }
 
-function Input({ label, value, onChange, type="text", placeholder }) {
+function Input({ label, value, onChange, type="text", placeholder, textarea, rows=3 }) {
+  const s = {
+    width:"100%", padding:"10px 14px", background:C.surf2, border:`1px solid ${C.border}`,
+    borderRadius:8, color:C.text, fontSize:13, fontFamily:"'Tajawal',sans-serif", outline:"none",
+    resize: textarea ? "vertical" : undefined
+  };
   return (
     <div style={{marginBottom:16}}>
       {label && <label style={{display:"block", fontSize:12, color:C.dim, marginBottom:6}}>{label}</label>}
-      <input 
-        type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-        style={{
-          width:"100%", padding:"10px 14px", background:C.surf2, border:`1px solid ${C.border}`,
-          borderRadius:8, color:C.text, fontSize:13, fontFamily:"'Tajawal',sans-serif", outline:"none"
-        }}
-      />
+      {textarea 
+        ? <textarea style={{...s, minHeight:rows*30}} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={rows} />
+        : <input style={s} type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} />
+      }
     </div>
   );
 }
 
 // ── SCREENS ───────────────────────────────────────────────────────────────
 
-// 1. Admin Login (التحديث الجديد: اسم المستخدم وكلمة المرور)
+// 1. Admin Login
 function AdminLogin({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -223,6 +225,13 @@ function AdminDashboard({ onLogout }) {
   const [expAmount, setExpAmount] = useState("");
   const [isSubmittingExp, setIsSubmittingExp] = useState(false);
 
+  // إضافات قسم نشر الإعلان
+  const [showAnnForm, setShowAnnForm] = useState(false);
+  const [annTitle, setAnnTitle] = useState("");
+  const [annBody, setAnnBody] = useState("");
+  const [annType, setAnnType] = useState("update");
+  const [isSubmittingAnn, setIsSubmittingAnn] = useState(false);
+
   useEffect(() => {
     const fetchReceipts = async () => {
       try {
@@ -277,6 +286,24 @@ function AdminDashboard({ onLogout }) {
     setIsSubmittingExp(false);
   };
 
+  const handleAddAnnouncement = async () => {
+    if (!annTitle || !annBody) return alert("⚠️ الرجاء تعبئة العنوان والنص");
+    setIsSubmittingAnn(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
+      const res = await fetch(`${apiUrl}/api/admin/announcements`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: annTitle, body: annBody, type: annType })
+      });
+      if (res.ok) {
+        alert("✅ تم نشر الإعلان للأعضاء بنجاح!");
+        setAnnTitle(""); setAnnBody(""); setShowAnnForm(false);
+      } else alert("❌ حدث خطأ أثناء النشر");
+    } catch (err) { alert("تعذر الاتصال بالسيرفر"); }
+    setIsSubmittingAnn(false);
+  };
+
   const downloadReport = async () => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
@@ -309,13 +336,48 @@ function AdminDashboard({ onLogout }) {
         </div>
         <div style={{display:"flex", gap:10, flexWrap: "wrap"}}>
           <Btn onClick={downloadReport} variant="green">📥 تقرير الأعضاء</Btn>
-          <Btn onClick={() => setShowExpenseForm(!showExpenseForm)} variant={showExpenseForm ? "ghost" : "primary"}>
-            {showExpenseForm ? "إلغاء" : "➖ سحب مصروف"}
+          
+          <Btn onClick={() => {setShowAnnForm(!showAnnForm); setShowExpenseForm(false);}} variant={showAnnForm ? "ghost" : "primary"}>
+            {showAnnForm ? "إلغاء الإعلان" : "📣 نشر إعلان"}
           </Btn>
+
+          <Btn onClick={() => {setShowExpenseForm(!showExpenseForm); setShowAnnForm(false);}} variant={showExpenseForm ? "ghost" : "primary"}>
+            {showExpenseForm ? "إلغاء السحب" : "➖ سحب مصروف"}
+          </Btn>
+
           <Btn onClick={onLogout} variant="red">خروج</Btn>
         </div>
       </header>
 
+      {/* قسم نشر الإعلانات الجديد */}
+      {showAnnForm && (
+        <Card style={{marginBottom:24, borderTop:`3px solid ${C.accent}`}} className="anim">
+          <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>نشر إعلان جديد للأعضاء</div>
+          
+          <div style={{display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:8, marginBottom:16}}>
+            {[
+              {id:'update',icon:'📢',label:'تحديث'},
+              {id:'meeting',icon:'📅',label:'اجتماع'},
+              {id:'honor',icon:'🏆',label:'تكريم'},
+              {id:'condolence',icon:'🕊️',label:'عزاء'}
+            ].map(t => (
+              <div key={t.id} onClick={() => setAnnType(t.id)} style={{background:annType===t.id?C.accentSoft:C.surf2, border:`1px solid ${annType===t.id?C.accent:C.border}`, borderRadius:8, padding:10, textAlign:"center", cursor:"pointer", transition:"all .2s"}}>
+                <div style={{fontSize:18, marginBottom:4}}>{t.icon}</div>
+                <div style={{fontSize:11, color:C.text}}>{t.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <Input label="عنوان الإعلان *" placeholder="مثال: موعد اجتماع العائلة السنوي..." value={annTitle} onChange={setAnnTitle} />
+          <Input label="نص الإعلان والتفاصيل *" placeholder="اكتب تفاصيل الإعلان هنا..." value={annBody} onChange={setAnnBody} textarea rows={4} />
+          
+          <Btn onClick={handleAddAnnouncement} style={{width:"100%"}} variant="primary">
+            {isSubmittingAnn ? "⏳ جاري النشر..." : "✔️ نشر الإعلان الآن"}
+          </Btn>
+        </Card>
+      )}
+
+      {/* قسم سحب المصروف */}
       {showExpenseForm && (
         <Card style={{marginBottom:24, borderTop:`3px solid ${C.accent}`}} className="anim">
           <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>تسجيل مصروف جديد</div>
@@ -380,7 +442,6 @@ function AdminDashboard({ onLogout }) {
 export default function App() {
   const [isAdminAuth, setIsAdminAuth] = useState(false);
 
-  // إذا لم يكن المدير مسجلاً الدخول، اعرض شاشة تسجيل الدخول الجديدة
   if (!isAdminAuth) {
     return <AdminLogin onLogin={() => setIsAdminAuth(true)} />;
   }
