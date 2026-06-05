@@ -135,7 +135,6 @@ function AdminDashboard({ onLogout }) {
     } catch (err) { alert("تعذر الاتصال بالسيرفر"); }
   };
 
-  // دالة إرسال المصروف للسيرفر
   const handleAddExpense = async () => {
     if (!expLabel || !expAmount) return alert("⚠️ الرجاء تعبئة وصف وقيمة المصروف");
     setIsSubmittingExp(true);
@@ -154,17 +153,52 @@ function AdminDashboard({ onLogout }) {
     setIsSubmittingExp(false);
   };
 
+  // دالة تحميل التقرير
+  const downloadReport = async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
+      const res = await fetch(`${apiUrl}/api/admin/reports/members`);
+      const data = await res.json();
+
+      // إضافة دعم اللغة العربية في ملفات CSV (BOM)
+      let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
+      
+      // عناوين الأعمدة
+      csvContent += "اسم العضو,رقم الجوال,حالة العضوية,إجمالي المدفوعات (ر.س),الذمة المستحقة (ر.س)\n";
+
+      // تعبئة البيانات
+      data.forEach(row => {
+        csvContent += `${row.full_name},${row.phone_number},${row.membership_status === 'active' ? 'نشط' : 'غير نشط'},${row.total_paid},${row.total_debt}\n`;
+      });
+
+      // إنشاء رابط التحميل والضغط عليه برمجياً
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "تقرير_صندوق_قطيفان.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+    } catch (err) {
+      alert("حدث خطأ أثناء تحميل التقرير");
+    }
+  };
+
   return (
     <div className="anim" style={{padding:"20px", maxWidth:800, margin:"0 auto"}}>
       <style>{G}</style>
       
       {/* Header */}
-      <header style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24, paddingBottom:16, borderBottom:`1px solid ${C.border}`}}>
+      <header style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24, paddingBottom:16, borderBottom:`1px solid ${C.border}`, flexWrap: "wrap", gap: "10px"}}>
         <div>
           <h1 style={{fontSize:20, color:C.accent}}>لوحة تحكم المدير</h1>
           <div style={{fontSize:12, color:C.muted, marginTop:4}}>مرحباً بك في مركز إدارة الصندوق</div>
         </div>
-        <div style={{display:"flex", gap:10}}>
+        <div style={{display:"flex", gap:10, flexWrap: "wrap"}}>
+          <Btn onClick={downloadReport} variant="green">
+            📥 تقرير الأعضاء
+          </Btn>
           <Btn onClick={() => setShowExpenseForm(!showExpenseForm)} variant={showExpenseForm ? "ghost" : "primary"}>
             {showExpenseForm ? "إلغاء" : "➖ سحب مصروف"}
           </Btn>
