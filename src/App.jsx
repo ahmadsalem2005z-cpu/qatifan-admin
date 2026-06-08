@@ -58,9 +58,17 @@ function AdminLogin({ onLogin }) {
     setLoading(true); setError("");
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
-      const res = await fetch(`${apiUrl}/auth/admin-login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+      const res = await fetch(`${apiUrl}/auth/admin-login`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ username, password }) 
+      });
       const data = await res.json();
-      if (res.ok && data.token) onLogin(data.token); else setError(data.error || "بيانات الإدارة غير صحيحة"); 
+      if (res.ok && data.token) {
+        onLogin(data.token); 
+      } else {
+        setError(data.error || "بيانات الإدارة غير صحيحة"); 
+      }
     } catch (err) { setError("تعذر الاتصال بالسيرفر"); }
     setLoading(false);
   };
@@ -81,7 +89,7 @@ function AdminLogin({ onLogin }) {
   );
 }
 
-function RequestsManager() {
+function RequestsManager({ token }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -91,18 +99,27 @@ function RequestsManager() {
     const fetchRequests = async () => {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
-        const res = await fetch(`${apiUrl}/api/admin/requests`);
+        const res = await fetch(`${apiUrl}/api/admin/requests`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if(res.ok) setRequests(await res.json());
       } catch (err) { console.error(err); } finally { setLoading(false); }
     };
     fetchRequests();
-  }, []);
+  }, [token]);
 
   const handleUpdateStatus = async (id, newStatus) => {
     if (!window.confirm(`هل أنت متأكد من ${newStatus === 'approved' ? 'قبول' : 'رفض'} هذا الطلب؟`)) return;
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
-      const res = await fetch(`${apiUrl}/api/admin/requests/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) });
+      const res = await fetch(`${apiUrl}/api/admin/requests/${id}/status`, { 
+        method: 'POST', 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }, 
+        body: JSON.stringify({ status: newStatus }) 
+      });
       if (res.ok) setRequests(requests.map(req => req.id === id ? { ...req, status: newStatus } : req));
       else alert("تعذر تحديث الحالة");
     } catch (error) { alert("تعذر الاتصال"); }
@@ -149,7 +166,7 @@ function RequestsManager() {
   );
 }
 
-function AdminDashboard({ onLogout }) {
+function AdminDashboard({ token, onLogout }) {
   const [selectedImage, setSelectedImage] = useState(null);
   const [pendingReceipts, setPendingReceipts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -170,18 +187,23 @@ function AdminDashboard({ onLogout }) {
     const fetchReceipts = async () => {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
-        const res = await fetch(`${apiUrl}/api/admin/pending-receipts`);
+        const res = await fetch(`${apiUrl}/api/admin/pending-receipts`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (res.ok) setPendingReceipts(await res.json());
       } catch (err) { console.error(err); } finally { setIsLoading(false); }
     };
     fetchReceipts();
-  }, []);
+  }, [token]);
 
   const handleApprove = async (receiptId) => {
     if (!window.confirm("هل أنت متأكد من اعتماد هذا الإيصال؟")) return;
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
-      const res = await fetch(`${apiUrl}/api/admin/approve-receipt/${receiptId}`, { method: 'POST' });
+      const res = await fetch(`${apiUrl}/api/admin/approve-receipt/${receiptId}`, { 
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) { setPendingReceipts(prev => prev.filter(rec => rec.id !== receiptId)); alert("✅ تم الاعتماد بنجاح!"); } 
       else alert("❌ حدث خطأ أثناء الاعتماد");
     } catch (err) { alert("تعذر الاتصال بالسيرفر"); }
@@ -191,7 +213,10 @@ function AdminDashboard({ onLogout }) {
     if (!window.confirm("هل أنت متأكد من رفض هذا الإيصال؟")) return;
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
-      const res = await fetch(`${apiUrl}/api/admin/reject-receipt/${receiptId}`, { method: 'POST' });
+      const res = await fetch(`${apiUrl}/api/admin/reject-receipt/${receiptId}`, { 
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) { setPendingReceipts(prev => prev.filter(rec => rec.id !== receiptId)); alert("✅ تم الرفض!"); } 
       else alert("❌ حدث خطأ");
     } catch (err) { alert("تعذر الاتصال بالسيرفر"); }
@@ -202,7 +227,14 @@ function AdminDashboard({ onLogout }) {
     setIsSubmittingExp(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
-      const res = await fetch(`${apiUrl}/api/admin/expenses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category: expCategory, label: expLabel, amount: expAmount }) });
+      const res = await fetch(`${apiUrl}/api/admin/expenses`, { 
+        method: 'POST', 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }, 
+        body: JSON.stringify({ category: expCategory, reason: expLabel, amount: expAmount }) 
+      });
       if (res.ok) { alert("✅ تم تسجيل المصروف!"); setExpLabel(""); setExpAmount(""); setShowExpenseForm(false); } 
       else alert("❌ خطأ أثناء التسجيل");
     } catch (err) { alert("تعذر الاتصال"); }
@@ -214,7 +246,14 @@ function AdminDashboard({ onLogout }) {
     setIsSubmittingAnn(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
-      const res = await fetch(`${apiUrl}/api/admin/announcements`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: annTitle, body: annBody, type: annType }) });
+      const res = await fetch(`${apiUrl}/api/admin/announcements`, { 
+        method: 'POST', 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }, 
+        body: JSON.stringify({ title: annTitle, body: annBody, type: annType }) 
+      });
       if (res.ok) { alert("✅ تم نشر الإعلان!"); setAnnTitle(""); setAnnBody(""); setShowAnnForm(false); } 
       else alert("❌ خطأ في النشر");
     } catch (err) { alert("تعذر الاتصال"); }
@@ -224,13 +263,28 @@ function AdminDashboard({ onLogout }) {
   const downloadReport = async () => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
-      const res = await fetch(`${apiUrl}/api/admin/reports/members`);
+      const res = await fetch(`${apiUrl}/api/admin/reports/members`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (!res.ok) {
+        alert("تعذر تحميل التقرير (تأكد من الصلاحيات)");
+        return;
+      }
+      
       const data = await res.json();
       let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-      csvContent += "اسم العضو,رقم الجوال,حالة العضوية,إجمالي المدفوعات (د.أ),الذمة المستحقة (د.أ)\n";
-      data.forEach(row => { csvContent += `${row.full_name},${row.phone_number},${row.membership_status === 'active' ? 'نشط' : 'غير نشط'},${row.total_paid},${row.total_debt}\n`; });
+      csvContent += "اسم العضو,رقم الجوال,إجمالي المدفوعات (د.أ),الذمة المستحقة (د.أ),تاريخ اخر دفعة\n";
+      
+      data.forEach(row => { 
+        const lastPaid = row.last_paid_date ? new Date(row.last_paid_date).toLocaleDateString('en-GB') : 'غير محدد';
+        csvContent += `${row.full_name},${row.phone_number},${row.total_paid},${row.total_debt},${lastPaid}\n`; 
+      });
+      
       const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "تقرير_صندوق_قطيفان.csv");
+      const link = document.createElement("a"); 
+      link.setAttribute("href", encodedUri); 
+      link.setAttribute("download", "تقرير_صندوق_قطيفان.csv");
       document.body.appendChild(link); link.click(); document.body.removeChild(link);
     } catch (err) { alert("تعذر تحميل التقرير"); }
   };
@@ -291,11 +345,11 @@ function AdminDashboard({ onLogout }) {
             {pendingReceipts.map(rec => (
               <div key={rec.id} style={{background:C.surf2, borderRadius:12, padding:16, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:16}}>
                 <div style={{display:"flex", alignItems:"center", gap:16}}>
-                  <div onClick={() => setSelectedImage(rec.image)} style={{width:50, height:50, background:C.border, borderRadius:8, cursor:"zoom-in", backgroundImage:`url(${rec.image})`, backgroundSize:'cover', backgroundPosition:'center', border:`1px solid ${C.muted}`}} />
+                  <div onClick={() => setSelectedImage(rec.image_url)} style={{width:50, height:50, background:C.border, borderRadius:8, cursor:"zoom-in", backgroundImage:`url(${rec.image_url})`, backgroundSize:'cover', backgroundPosition:'center', border:`1px solid ${C.muted}`}} />
                   <div>
-                    <div style={{fontSize:14, fontWeight:700, color:C.text}}>{rec.memberName}</div>
-                    <div style={{fontSize:11, color:C.muted, marginTop:4}}>النوع: <span style={{color:C.accent}}>{rec.months}</span></div>
-                    <div style={{fontSize:10, color:C.dim, marginTop:2}}>{rec.date}</div>
+                    <div style={{fontSize:14, fontWeight:700, color:C.text}}>{rec.full_name}</div>
+                    <div style={{fontSize:11, color:C.muted, marginTop:4}}>النوع: <span style={{color:C.accent}}>دفعة مالية</span></div>
+                    <div style={{fontSize:10, color:C.dim, marginTop:2}}>{new Date(rec.created_at).toLocaleDateString('en-GB')}</div>
                   </div>
                 </div>
                 <div style={{display:"flex", alignItems:"center", gap:12}}>
@@ -309,7 +363,7 @@ function AdminDashboard({ onLogout }) {
         )}
       </Card>
 
-      <RequestsManager />
+      <RequestsManager token={token} />
 
       {selectedImage && (
         <div onClick={() => setSelectedImage(null)} style={{position:"fixed", inset:0, background:"rgba(0,0,0,0.9)", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", padding:20, cursor:"zoom-out"}}>
@@ -322,7 +376,18 @@ function AdminDashboard({ onLogout }) {
 }
 
 export default function App() {
-  const [isAdminAuth, setIsAdminAuth] = useState(false);
-  if (!isAdminAuth) return <AdminLogin onLogin={() => setIsAdminAuth(true)} />;
-  return <AdminDashboard onLogout={() => setIsAdminAuth(false)} />;
+  const [adminToken, setAdminToken] = useState(localStorage.getItem("qatifan_admin_token") || null);
+
+  const handleLoginSuccess = (token) => {
+    localStorage.setItem("qatifan_admin_token", token);
+    setAdminToken(token);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("qatifan_admin_token");
+    setAdminToken(null);
+  };
+
+  if (!adminToken) return <AdminLogin onLogin={handleLoginSuccess} />;
+  return <AdminDashboard token={adminToken} onLogout={handleLogout} />;
 }
