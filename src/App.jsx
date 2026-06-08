@@ -349,11 +349,11 @@ function AdminDashboard({ token, onLogout }) {
                   <div>
                     <div style={{fontSize:14, fontWeight:700, color:C.text}}>{rec.full_name}</div>
                     <div style={{fontSize:11, color:C.muted, marginTop:4}}>النوع: <span style={{color:C.accent}}>دفعة مالية</span></div>
-                    <div style={{fontSize:10, color:C.dim, marginTop:2}}>{new Date(rec.created_at).toLocaleDateString('en-GB')}</div>
+                    <div style={{fontSize:10, color:C.dim, marginTop:2}}>{rec.date ? new Date(rec.date).toLocaleDateString('en-GB') : 'تاريخ غير معروف'}</div>
                   </div>
                 </div>
                 <div style={{display:"flex", alignItems:"center", gap:12}}>
-                  <div style={{fontSize:16, fontWeight:700, fontFamily:"'IBM Plex Mono',monospace", color:C.gold, marginLeft:16}}>{Number(rec.amount).toLocaleString("en-US")} د.أ</div>
+                  <div style={{fontSize:16, fontWeight:700, fontFamily:"'IBM Plex Mono',monospace", color:C.gold, marginLeft:16}}>{Number(rec.amount || 2).toLocaleString("en-US")} د.أ</div>
                   <Btn variant="green" onClick={() => handleApprove(rec.id)}>اعتماد الدفعة</Btn>
                   <Btn variant="red" onClick={() => handleRejectReceipt(rec.id)}>رفض</Btn>
                 </div>
