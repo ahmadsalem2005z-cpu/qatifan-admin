@@ -194,11 +194,9 @@ function AdminDashboard({ onLogout }) {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
         
-        // Fetch Receipts
         const resReceipts = await fetch(`${apiUrl}/api/admin/pending-receipts`, { headers: getAuthHeaders() });
         if (resReceipts.ok) setPendingReceipts(await resReceipts.json());
         
-        // Fetch Members for Dropdown
         const resMembers = await fetch(`${apiUrl}/api/admin/members/list`, { headers: getAuthHeaders() });
         if (resMembers.ok) setMembersList(await resMembers.json());
 
@@ -208,11 +206,24 @@ function AdminDashboard({ onLogout }) {
   }, []);
 
   const handleApprove = async (receiptId) => {
-    if (!window.confirm("هل أنت متأكد من اعتماد هذا الإيصال؟")) return;
+    const amountStr = window.prompt("كم قيمة الدفعة المودعة في هذا الإيصال؟ (كل 2 دينار = 1 شهر تغطية)", "2");
+    if (amountStr === null) return;
+    
+    const amount = parseFloat(amountStr);
+    if (isNaN(amount) || amount <= 0) return alert("❌ الرجاء إدخال مبلغ صحيح");
+
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
-      const res = await fetch(`${apiUrl}/api/admin/approve-receipt/${receiptId}`, { method: 'POST', headers: getAuthHeaders() });
-      if (res.ok) { setPendingReceipts(prev => prev.filter(rec => rec.id !== receiptId)); alert("✅ تم الاعتماد بنجاح!"); } 
+      const res = await fetch(`${apiUrl}/api/admin/approve-receipt/${receiptId}`, { 
+        method: 'POST', 
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ amount })
+      });
+      if (res.ok) { 
+        const data = await res.json();
+        setPendingReceipts(prev => prev.filter(rec => rec.id !== receiptId)); 
+        alert(`✅ تم الاعتماد بنجاح! تم إنقاص الدين وتقدم تاريخ السداد بمقدار ${data.advancedMonths || (amount/2)} شهر/أشهر.`); 
+      } 
       else alert("❌ حدث خطأ أثناء الاعتماد");
     } catch (err) { alert("تعذر الاتصال بالسيرفر"); }
   };
@@ -334,8 +345,7 @@ function AdminDashboard({ onLogout }) {
                   </div>
                 </div>
                 <div style={{display:"flex", alignItems:"center", gap:12}}>
-                  <div style={{fontSize:16, fontWeight:700, fontFamily:"'IBM Plex Mono',monospace", color:C.gold, marginLeft:16}}>2 د.أ</div>
-                  <Btn variant="green" onClick={() => handleApprove(rec.id)}>اعتماد</Btn>
+                  <Btn variant="green" onClick={() => handleApprove(rec.id)}>اعتماد الدفعة</Btn>
                   <Btn variant="red" onClick={() => handleRejectReceipt(rec.id)}>رفض</Btn>
                 </div>
               </div>
