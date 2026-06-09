@@ -53,6 +53,18 @@ function Input({ label, value, onChange, type="text", placeholder, textarea, row
   );
 }
 
+function Select({ label, value, onChange, options }) {
+  const s = { width:"100%", padding:"10px 14px", background:C.surf2, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, fontSize:13, fontFamily:"'Tajawal',sans-serif", outline:"none" };
+  return (
+    <div style={{marginBottom:16}}>
+      {label && <label style={{display:"block", fontSize:12, color:C.dim, marginBottom:6}}>{label}</label>}
+      <select style={s} value={value} onChange={e=>onChange(e.target.value)}>
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  );
+}
+
 function AdminLogin({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -162,6 +174,7 @@ function AdminDashboard({ onLogout }) {
   const [selectedImage, setSelectedImage] = useState(null);
   const [pendingReceipts, setPendingReceipts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [membersList, setMembersList] = useState([]);
   
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [expCategory, setExpCategory] = useState("wedding");
@@ -173,17 +186,25 @@ function AdminDashboard({ onLogout }) {
   const [annTitle, setAnnTitle] = useState("");
   const [annBody, setAnnBody] = useState("");
   const [annType, setAnnType] = useState("update");
+  const [annTarget, setAnnTarget] = useState("");
   const [isSubmittingAnn, setIsSubmittingAnn] = useState(false);
 
   useEffect(() => {
-    const fetchReceipts = async () => {
+    const fetchData = async () => {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
-        const res = await fetch(`${apiUrl}/api/admin/pending-receipts`, { headers: getAuthHeaders() });
-        if (res.ok) setPendingReceipts(await res.json());
+        
+        // Fetch Receipts
+        const resReceipts = await fetch(`${apiUrl}/api/admin/pending-receipts`, { headers: getAuthHeaders() });
+        if (resReceipts.ok) setPendingReceipts(await resReceipts.json());
+        
+        // Fetch Members for Dropdown
+        const resMembers = await fetch(`${apiUrl}/api/admin/members/list`, { headers: getAuthHeaders() });
+        if (resMembers.ok) setMembersList(await resMembers.json());
+
       } catch (err) { console.error(err); } finally { setIsLoading(false); }
     };
-    fetchReceipts();
+    fetchData();
   }, []);
 
   const handleApprove = async (receiptId) => {
@@ -223,8 +244,9 @@ function AdminDashboard({ onLogout }) {
     setIsSubmittingAnn(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
-      const res = await fetch(`${apiUrl}/api/admin/announcements`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ title: annTitle, body: annBody, type: annType }) });
-      if (res.ok) { alert("✅ تم نشر الإعلان!"); setAnnTitle(""); setAnnBody(""); setShowAnnForm(false); } 
+      const payload = { title: annTitle, body: annBody, type: annType, member_id: annTarget || null };
+      const res = await fetch(`${apiUrl}/api/admin/announcements`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(payload) });
+      if (res.ok) { alert("✅ تم نشر الإعلان!"); setAnnTitle(""); setAnnBody(""); setAnnTarget(""); setShowAnnForm(false); } 
       else alert("❌ خطأ في النشر");
     } catch (err) { alert("تعذر الاتصال"); }
     setIsSubmittingAnn(false);
@@ -271,6 +293,10 @@ function AdminDashboard({ onLogout }) {
             ))}
           </div>
           <Input label="عنوان الإعلان *" placeholder="مثال: موعد اجتماع..." value={annTitle} onChange={setAnnTitle} />
+          <Select label="إرسال الإعلان إلى:" value={annTarget} onChange={setAnnTarget} options={[
+            {label: "جميع الأعضاء", value: ""},
+            ...membersList.map(m => ({label: m.full_name, value: m.id}))
+          ]} />
           <Input label="نص الإعلان *" placeholder="اكتب تفاصيل الإعلان هنا..." value={annBody} onChange={setAnnBody} textarea rows={4} />
           <Btn onClick={handleAddAnnouncement} style={{width:"100%"}} variant="primary">{isSubmittingAnn ? "⏳ جاري النشر..." : "✔️ نشر الإعلان الآن"}</Btn>
         </Card>
