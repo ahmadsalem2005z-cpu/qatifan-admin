@@ -105,25 +105,20 @@ function AdminLogin({ onLogin }) {
   );
 }
 
-// ── شاشة إدارة الأعضاء (الجديدة) ──
+// ── شاشة إدارة الأعضاء (محمية ومطورة) ──
 function MembersManager() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // فلاتر البحث المتقدم
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranch, setFilterBranch] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all"); // 'all', 'paid', 'debt'
+  const [filterStatus, setFilterStatus] = useState("all");
   
-  // النوافذ المنبثقة
   const [showAddEdit, setShowAddEdit] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [currentMember, setCurrentMember] = useState(null);
 
-  // فورم التعديل/الإضافة
   const [formData, setFormData] = useState({ full_name: "", phone_number: "", family_branch: "", total_debt: 0, last_paid_date: "" });
-  
-  // فورم الذمم الجماعية
   const [bulkData, setBulkData] = useState({ amount: "", branch: "all", status: "all" });
 
   const fetchMembers = async () => {
@@ -131,8 +126,19 @@ function MembersManager() {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
       const res = await fetch(`${apiUrl}/api/admin/members`, { headers: getAuthHeaders() });
-      if (res.ok) setMembers(await res.json());
-    } catch (err) { console.error(err); } finally { setLoading(false); }
+      if (res.ok) {
+        const data = await res.json();
+        // حماية للتأكد من أن البيانات مصفوفة سليمة
+        setMembers(Array.isArray(data) ? data : []);
+      } else {
+        setMembers([]);
+      }
+    } catch (err) { 
+      console.error(err); 
+      setMembers([]); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   useEffect(() => { fetchMembers(); }, []);
@@ -192,15 +198,21 @@ function MembersManager() {
     } catch (err) { alert("تعذر الاتصال"); }
   };
 
-  // استخراج الفروع الموجودة ديناميكياً لفلتر البحث
+  // استخراج الفروع بطريقة آمنة تماماً
   const uniqueBranches = ["all", ...new Set(members.map(m => m.family_branch).filter(Boolean))];
 
-  // تطبيق البحث المتقدم
+  // فلترة محمية 100% ضد الأخطاء (Null Safety) لمنع انهيار الشاشة البيضاء
   const filteredMembers = members.filter(m => {
-    const matchQuery = m.full_name.includes(searchQuery) || m.phone_number.includes(searchQuery);
-    const matchBranch = filterBranch === "all" || m.family_branch === filterBranch;
+    const name = m.full_name || "";
+    const phone = m.phone_number || "";
+    const branch = m.family_branch || "";
+    const q = searchQuery || "";
+
+    const matchQuery = name.includes(q) || phone.includes(q);
+    const matchBranch = filterBranch === "all" || branch === filterBranch;
     const debtVal = parseFloat(m.total_debt || 0);
     const matchStatus = filterStatus === "all" ? true : filterStatus === "paid" ? debtVal <= 0 : debtVal > 0;
+    
     return matchQuery && matchBranch && matchStatus;
   });
 
@@ -238,12 +250,12 @@ function MembersManager() {
                 {filteredMembers.map(m => (
                   <tr key={m.id} style={{borderBottom:`1px solid ${C.border}50`, opacity: m.membership_status==='archived' ? 0.5 : 1}}>
                     <td style={{padding:12}}>
-                      <div style={{fontWeight:700, color:C.text, fontSize:13}}>{m.full_name}</div>
-                      <div style={{fontSize:11, color:C.dim}}>{m.phone_number}</div>
+                      <div style={{fontWeight:700, color:C.text, fontSize:13}}>{m.full_name || "عضو بدون اسم"}</div>
+                      <div style={{fontSize:11, color:C.dim}}>{m.phone_number || "---"}</div>
                     </td>
-                    <td style={{padding:12, fontSize:13}}>{m.family_branch}</td>
+                    <td style={{padding:12, fontSize:13}}>{m.family_branch || "غير محدد"}</td>
                     <td style={{padding:12}}>
-                      <span style={{color: parseFloat(m.total_debt)>0 ? C.red : C.green, fontWeight:700, fontFamily:"'IBM Plex Mono'"}}>
+                      <span style={{color: parseFloat(m.total_debt||0)>0 ? C.red : C.green, fontWeight:700, fontFamily:"'IBM Plex Mono'"}}>
                         {Number(m.total_debt||0).toLocaleString()} د.أ
                       </span>
                     </td>
@@ -251,7 +263,7 @@ function MembersManager() {
                       <Tag label={m.membership_status==='archived' ? 'مؤرشف' : 'نشط'} color={m.membership_status==='archived' ? C.muted : C.green} />
                     </td>
                     <td style={{padding:12, display:"flex", gap:8}}>
-                      <Btn small variant="ghost" onClick={() => { setCurrentMember(m); setFormData({ full_name: m.full_name, phone_number: m.phone_number, family_branch: m.family_branch, total_debt: m.total_debt, last_paid_date: m.last_paid_date ? m.last_paid_date.split('T')[0] : "" }); setShowAddEdit(true); }}>تعديل</Btn>
+                      <Btn small variant="ghost" onClick={() => { setCurrentMember(m); setFormData({ full_name: m.full_name || "", phone_number: m.phone_number || "", family_branch: m.family_branch || "غير محدد", total_debt: m.total_debt || 0, last_paid_date: m.last_paid_date ? m.last_paid_date.split('T')[0] : "" }); setShowAddEdit(true); }}>تعديل</Btn>
                       <Btn small variant={m.membership_status==='archived' ? "green" : "red"} onClick={() => handleToggleArchive(m.id, m.membership_status)}>
                         {m.membership_status==='archived' ? 'تنشيط' : 'أرشفة'}
                       </Btn>
@@ -301,21 +313,19 @@ function MembersManager() {
   );
 }
 
-// ── العمليات اليومية (القديمة) ──
+// ── العمليات اليومية (محمية ومطورة) ──
 function OperationsManager() {
   const [requests, setRequests] = useState([]);
   const [pendingReceipts, setPendingReceipts] = useState([]);
   const [membersList, setMembersList] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Expense State
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [expCategory, setExpCategory] = useState("wedding");
   const [expLabel, setExpLabel] = useState("");
   const [expAmount, setExpAmount] = useState("");
   const [isSubmittingExp, setIsSubmittingExp] = useState(false);
 
-  // Ann State
   const [showAnnForm, setShowAnnForm] = useState(false);
   const [annTitle, setAnnTitle] = useState("");
   const [annBody, setAnnBody] = useState("");
@@ -331,13 +341,14 @@ function OperationsManager() {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
         const [reqs, recs, mems] = await Promise.all([
-          fetch(`${apiUrl}/api/admin/requests`, { headers: getAuthHeaders() }).then(r=>r.json()),
-          fetch(`${apiUrl}/api/admin/pending-receipts`, { headers: getAuthHeaders() }).then(r=>r.json()),
-          fetch(`${apiUrl}/api/admin/members/list`, { headers: getAuthHeaders() }).then(r=>r.json())
+          fetch(`${apiUrl}/api/admin/requests`, { headers: getAuthHeaders() }).then(r=>r.json()).catch(()=>([])),
+          fetch(`${apiUrl}/api/admin/pending-receipts`, { headers: getAuthHeaders() }).then(r=>r.json()).catch(()=>([])),
+          fetch(`${apiUrl}/api/admin/members/list`, { headers: getAuthHeaders() }).then(r=>r.json()).catch(()=>([]))
         ]);
-        setRequests(reqs.length ? reqs : []);
-        setPendingReceipts(recs.length ? recs : []);
-        setMembersList(mems.length ? mems : []);
+        // حماية مصفوفات البيانات
+        setRequests(Array.isArray(reqs) ? reqs : []);
+        setPendingReceipts(Array.isArray(recs) ? recs : []);
+        setMembersList(Array.isArray(mems) ? mems : []);
       } catch (err) { console.error(err); } finally { setLoading(false); }
     };
     fetchData();
@@ -414,7 +425,7 @@ function OperationsManager() {
             ))}
           </div>
           <Input label="عنوان الإعلان *" value={annTitle} onChange={setAnnTitle} />
-          <Select label="إرسال الإعلان إلى:" value={annTarget} onChange={setAnnTarget} options={[{label: "جميع الأعضاء", value: ""}, ...membersList.map(m => ({label: m.full_name, value: m.id}))]} />
+          <Select label="إرسال الإعلان إلى:" value={annTarget} onChange={setAnnTarget} options={[{label: "جميع الأعضاء", value: ""}, ...membersList.map(m => ({label: m.full_name || "بدون اسم", value: m.id}))]} />
           <Input label="نص الإعلان *" value={annBody} onChange={setAnnBody} textarea rows={4} />
           <Btn onClick={handleAddAnnouncement} style={{width:"100%"}}>{isSubmittingAnn ? "⏳ جاري النشر..." : "✔️ نشر الإعلان"}</Btn>
         </Card>
@@ -446,7 +457,7 @@ function OperationsManager() {
                 <div style={{display:"flex", alignItems:"center", gap:16}}>
                   <div onClick={() => setSelectedImage(rec.image_url)} style={{width:50, height:50, background:C.border, borderRadius:8, cursor:"zoom-in", backgroundImage:`url(${rec.image_url})`, backgroundSize:'cover', backgroundPosition:'center'}} />
                   <div>
-                    <div style={{fontSize:14, fontWeight:700, color:C.text}}>{rec.full_name}</div>
+                    <div style={{fontSize:14, fontWeight:700, color:C.text}}>{rec.full_name || "بدون اسم"}</div>
                     <div style={{fontSize:11, color:C.muted, marginTop:4}}>النوع: <span style={{color:C.accent}}>{rec.for_month && rec.for_year ? `تغطية شهر ${rec.for_month} / ${rec.for_year}` : "تغطية تلقائية (الشهر التالي)"}</span></div>
                     <div style={{fontSize:10, color:C.dim, marginTop:2}}>{new Date(rec.date).toLocaleDateString('ar-JO')}</div>
                   </div>
@@ -470,8 +481,8 @@ function OperationsManager() {
                 <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                   <div style={{fontSize:20}}>{req.type==='wedding'?'💍':req.type==='condolence'?'🕊️':req.type==='help'?'🤝':'💰'}</div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize:14, color:C.text }}>{req.full_name}</h3>
-                    <div style={{fontSize:11, color:C.muted}}>{req.phone_number}</div>
+                    <h3 style={{ margin: 0, fontSize:14, color:C.text }}>{req.full_name || "بدون اسم"}</h3>
+                    <div style={{fontSize:11, color:C.muted}}>{req.phone_number || "---"}</div>
                   </div>
                 </div>
                 <span style={{ padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: req.status === 'pending' ? `${C.gold}20` : req.status === 'approved' ? `${C.green}20` : `${C.red}20`, color: req.status === 'pending' ? C.gold : req.status === 'approved' ? C.green : C.red }}>
@@ -515,15 +526,26 @@ function AdminDashboard({ onLogout }) {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
       const res = await fetch(`${apiUrl}/api/admin/reports/members`, { headers: getAuthHeaders() });
+      
+      if (!res.ok) {
+        alert("تعذر تحميل التقرير (تأكد من الصلاحيات)");
+        return;
+      }
+
       const data = await res.json();
+      if (!Array.isArray(data)) {
+        alert("صيغة التقرير غير صحيحة");
+        return;
+      }
+
       let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
       csvContent += "اسم العضو,رقم الجوال,الفرع,حالة العضوية,إجمالي المدفوعات (د.أ),الذمة المستحقة (د.أ),تاريخ آخر دفعة\n";
       
       data.forEach(row => { 
-        const formattedPhone = `="${row.phone_number}"`;
+        const formattedPhone = `="${row.phone_number || ''}"`;
         const memberStatus = row.membership_status === 'active' ? 'نشط' : 'مؤرشف';
         const lastPaid = row.last_paid_date ? new Date(row.last_paid_date).toLocaleDateString('en-GB') : 'غير محدد';
-        csvContent += `${row.full_name},${formattedPhone},${row.family_branch || 'غير محدد'},${memberStatus},${row.total_paid},${row.total_debt},${lastPaid}\n`; 
+        csvContent += `${row.full_name || 'بدون اسم'},${formattedPhone},${row.family_branch || 'غير محدد'},${memberStatus},${row.total_paid || 0},${row.total_debt || 0},${lastPaid}\n`; 
       });
       
       const encodedUri = encodeURI(csvContent);
