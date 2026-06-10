@@ -270,7 +270,16 @@ function AdminDashboard({ onLogout }) {
       const data = await res.json();
       let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
       csvContent += "اسم العضو,رقم الجوال,حالة العضوية,إجمالي المدفوعات (د.أ),الذمة المستحقة (د.أ),تاريخ آخر دفعة\n";
-      data.forEach(row => { csvContent += `${row.full_name},${row.phone_number},${row.membership_status === 'active' ? 'نشط' : 'غير نشط'},${row.total_paid},${row.total_debt},${row.last_paid_date ? new Date(row.last_paid_date).toLocaleDateString('en-GB') : 'غير محدد'}\n`; });
+      
+      data.forEach(row => { 
+        // التعديل هنا: إضافة =" " حول رقم الجوال لإجبار الإكسيل على قراءته كنص والاحتفاظ بالصفر
+        const formattedPhone = `="${row.phone_number}"`;
+        const memberStatus = row.membership_status === 'active' ? 'نشط' : 'غير نشط';
+        const lastPaid = row.last_paid_date ? new Date(row.last_paid_date).toLocaleDateString('en-GB') : 'غير محدد';
+        
+        csvContent += `${row.full_name},${formattedPhone},${memberStatus},${row.total_paid},${row.total_debt},${lastPaid}\n`; 
+      });
+      
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "تقرير_صندوق_قطيفان.csv");
       document.body.appendChild(link); link.click(); document.body.removeChild(link);
