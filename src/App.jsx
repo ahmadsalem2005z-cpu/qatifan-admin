@@ -27,7 +27,6 @@ const getAuthHeaders = () => ({
   'Content-Type': 'application/json'
 });
 
-// ── Helper components ─────────────────────────────────────────────────────
 function Card({ children, style={} }) {
   return <div style={{ background:C.surf, border:`1px solid ${C.border}`, borderRadius:16, padding:"20px", ...style }}>{children}</div>;
 }
@@ -68,7 +67,6 @@ function Select({ label, value, onChange, options }) {
   );
 }
 
-// ⬇️ هذا هو المكون المفقود الذي تسبب في انهيار الشاشة! تم إضافته الآن.
 function Tag({ label, color=C.accent }) {
   return (
     <span style={{
@@ -116,7 +114,7 @@ function AdminLogin({ onLogin }) {
   );
 }
 
-// ── شاشة إدارة الأعضاء ──
+// ── شاشة إدارة الأعضاء (تم إضافة حقل سبب التعديل للتدقيق) ──
 function MembersManager() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -129,8 +127,8 @@ function MembersManager() {
   const [showBulk, setShowBulk] = useState(false);
   const [currentMember, setCurrentMember] = useState(null);
 
-  const [formData, setFormData] = useState({ full_name: "", phone_number: "", family_branch: "", total_debt: 0, last_paid_date: "" });
-  const [bulkData, setBulkData] = useState({ amount: "", branch: "all", status: "all" });
+  const [formData, setFormData] = useState({ full_name: "", phone_number: "", family_branch: "", total_debt: 0, last_paid_date: "", audit_reason: "" });
+  const [bulkData, setBulkData] = useState({ amount: "", branch: "all", status: "all", audit_reason: "" });
 
   const fetchMembers = async () => {
     setLoading(true);
@@ -140,15 +138,8 @@ function MembersManager() {
       if (res.ok) {
         const data = await res.json();
         setMembers(Array.isArray(data) ? data : []);
-      } else {
-        setMembers([]);
-      }
-    } catch (err) { 
-      console.error(err); 
-      setMembers([]); 
-    } finally { 
-      setLoading(false); 
-    }
+      } else setMembers([]);
+    } catch (err) { setMembers([]); } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchMembers(); }, []);
@@ -166,7 +157,7 @@ function MembersManager() {
         body: JSON.stringify(formData)
       });
       if (res.ok) {
-        alert(currentMember ? "تم التحديث بنجاح" : "تمت الإضافة بنجاح");
+        alert(currentMember ? "تم التحديث وتوثيق العملية" : "تمت الإضافة بنجاح");
         setShowAddEdit(false);
         fetchMembers();
       } else alert("حدث خطأ أثناء الحفظ");
@@ -184,8 +175,7 @@ function MembersManager() {
         body: JSON.stringify({ status: newStatus })
       });
       if (res.ok) fetchMembers();
-      else alert("حدث خطأ");
-    } catch (err) { alert("تعذر الاتصال"); }
+    } catch (err) {}
   };
 
   const handleApplyBulkDues = async () => {
@@ -227,7 +217,7 @@ function MembersManager() {
   return (
     <div className="anim">
       <div style={{display:"flex", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:10}}>
-        <Btn onClick={() => { setCurrentMember(null); setFormData({ full_name: "", phone_number: "", family_branch: "الفرع الأول", total_debt: 0, last_paid_date: "" }); setShowAddEdit(true); }} variant="green">+ إضافة عضو جديد</Btn>
+        <Btn onClick={() => { setCurrentMember(null); setFormData({ full_name: "", phone_number: "", family_branch: "الفرع الأول", total_debt: 0, last_paid_date: "", audit_reason: "" }); setShowAddEdit(true); }} variant="green">+ إضافة عضو جديد</Btn>
         <Btn onClick={() => setShowBulk(true)} variant="primary">⚖️ تعديل الذمم الجماعي</Btn>
       </div>
 
@@ -271,7 +261,7 @@ function MembersManager() {
                       <Tag label={m.membership_status==='archived' ? 'مؤرشف' : 'نشط'} color={m.membership_status==='archived' ? C.muted : C.green} />
                     </td>
                     <td style={{padding:12, display:"flex", gap:8}}>
-                      <Btn small variant="ghost" onClick={() => { setCurrentMember(m); setFormData({ full_name: m.full_name || "", phone_number: m.phone_number || "", family_branch: m.family_branch || "غير محدد", total_debt: m.total_debt || 0, last_paid_date: m.last_paid_date ? m.last_paid_date.split('T')[0] : "" }); setShowAddEdit(true); }}>تعديل</Btn>
+                      <Btn small variant="ghost" onClick={() => { setCurrentMember(m); setFormData({ full_name: m.full_name || "", phone_number: m.phone_number || "", family_branch: m.family_branch || "غير محدد", total_debt: m.total_debt || 0, last_paid_date: m.last_paid_date ? m.last_paid_date.split('T')[0] : "", audit_reason: "" }); setShowAddEdit(true); }}>تعديل</Btn>
                       <Btn small variant={m.membership_status==='archived' ? "green" : "red"} onClick={() => handleToggleArchive(m.id, m.membership_status)}>
                         {m.membership_status==='archived' ? 'تنشيط' : 'أرشفة'}
                       </Btn>
@@ -286,13 +276,19 @@ function MembersManager() {
 
       {showAddEdit && (
         <div style={{position:"fixed", inset:0, background:"rgba(0,0,0,0.8)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100, padding:20}}>
-          <Card style={{width:"100%", maxWidth:400}}>
+          <Card style={{width:"100%", maxWidth:400, maxHeight:"90vh", overflowY:"auto"}}>
             <h3 style={{marginBottom:16, color:C.text}}>{currentMember ? "تعديل بيانات العضو" : "إضافة عضو جديد"}</h3>
             <Input label="الاسم الرباعي" value={formData.full_name} onChange={v => setFormData({...formData, full_name:v})} />
             <Input label="رقم الجوال" value={formData.phone_number} onChange={v => setFormData({...formData, phone_number:v})} />
             <Input label="الفرع / الفخذ" placeholder="مثال: الفرع الأول" value={formData.family_branch} onChange={v => setFormData({...formData, family_branch:v})} />
             <Input label="الذمة المستحقة الحالية (دينار)" type="number" value={formData.total_debt} onChange={v => setFormData({...formData, total_debt:v})} />
             <Input label="تاريخ آخر تغطية (اختياري)" type="date" value={formData.last_paid_date} onChange={v => setFormData({...formData, last_paid_date:v})} />
+            
+            {/* حقل التدقيق المالي */}
+            {currentMember && (
+              <Input label="ملاحظات / سبب التعديل المالي (للتدقيق)" placeholder="مثال: تصحيح ذمة سابقة" value={formData.audit_reason} onChange={v => setFormData({...formData, audit_reason:v})} />
+            )}
+
             <div style={{display:"flex", gap:10, marginTop:20}}>
               <Btn style={{flex:1}} onClick={handleSaveMember}>حفظ البيانات</Btn>
               <Btn style={{flex:1}} variant="ghost" onClick={() => setShowAddEdit(false)}>إلغاء</Btn>
@@ -303,12 +299,16 @@ function MembersManager() {
 
       {showBulk && (
         <div style={{position:"fixed", inset:0, background:"rgba(0,0,0,0.8)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100, padding:20}}>
-          <Card style={{width:"100%", maxWidth:400}}>
+          <Card style={{width:"100%", maxWidth:400, maxHeight:"90vh", overflowY:"auto"}}>
             <h3 style={{marginBottom:8, color:C.text}}>تعديل الذمم الجماعي</h3>
             <p style={{fontSize:12, color:C.muted, marginBottom:16}}>سيتم إضافة هذا المبلغ كذمة (دين) على جميع الأعضاء الذين ينطبق عليهم الفلتر.</p>
             <Input label="المبلغ المراد إضافته (د.أ)" type="number" value={bulkData.amount} onChange={v => setBulkData({...bulkData, amount:v})} />
             <Select label="تطبيق على فرع:" value={bulkData.branch} onChange={v => setBulkData({...bulkData, branch:v})} options={uniqueBranches.map(b => ({ label: b==='all' ? 'جميع الفروع' : b, value: b }))} />
             <Select label="تطبيق على حالة:" value={bulkData.status} onChange={v => setBulkData({...bulkData, status:v})} options={[ {label:"جميع الأعضاء", value:"all"}, {label:"الأعضاء النشطين فقط", value:"active"} ]} />
+            
+            {/* حقل التدقيق المالي */}
+            <Input label="سبب إضافة الذمة (للتدقيق)" placeholder="مثال: اشتراك شهر جديد" value={bulkData.audit_reason} onChange={v => setBulkData({...bulkData, audit_reason:v})} />
+
             <div style={{display:"flex", gap:10, marginTop:20}}>
               <Btn style={{flex:1}} variant="primary" onClick={handleApplyBulkDues}>تأكيد التطبيق</Btn>
               <Btn style={{flex:1}} variant="ghost" onClick={() => setShowBulk(false)}>إلغاء</Btn>
@@ -317,6 +317,73 @@ function MembersManager() {
         </div>
       )}
     </div>
+  );
+}
+
+// ── شاشة سجل التدقيق (الجديدة كلياً) ──
+function AuditLogsManager() {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
+        const res = await fetch(`${apiUrl}/api/admin/audit-logs`, { headers: getAuthHeaders() });
+        if (res.ok) setLogs(await res.json());
+      } catch (err) {} finally { setLoading(false); }
+    };
+    fetchLogs();
+  }, []);
+
+  if (loading) return <div style={{textAlign:"center", color:C.muted, padding:40}}>⏳ جاري تحميل سجل الحركات...</div>;
+
+  return (
+    <Card className="anim">
+      <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>سجل التدقيق المالي (Audit Trail)</div>
+      <p style={{fontSize:12, color:C.muted, marginBottom:20}}>يعرض هذا السجل كافة الحركات المالية والتعديلات التي قام بها النظام أو المشرفون.</p>
+      
+      {logs.length === 0 ? (
+        <div style={{textAlign:"center", color:C.dim, padding:20}}>لا توجد حركات مالية مسجلة بعد.</div>
+      ) : (
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%", textAlign:"right", borderCollapse:"collapse", minWidth:800}}>
+            <thead>
+              <tr style={{borderBottom:`1px solid ${C.border}`, color:C.muted, fontSize:12}}>
+                <th style={{padding:12}}>التاريخ والوقت</th>
+                <th style={{padding:12}}>الإجراء</th>
+                <th style={{padding:12}}>العضو المستهدف</th>
+                <th style={{padding:12}}>المبلغ والتأثير</th>
+                <th style={{padding:12}}>السبب / الملاحظات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map(log => {
+                const isPositive = parseFloat(log.amount) > 0;
+                const isNegative = parseFloat(log.amount) < 0;
+                return (
+                  <tr key={log.id} style={{borderBottom:`1px solid ${C.border}50`}}>
+                    <td style={{padding:12, fontSize:12, color:C.dim}} dir="ltr" style={{textAlign: "right", padding:12}}>
+                      {new Date(log.created_at).toLocaleString('en-GB')}
+                    </td>
+                    <td style={{padding:12}}>
+                      <Tag label={log.action} color={C.accent} />
+                    </td>
+                    <td style={{padding:12, fontSize:13, fontWeight:700}}>{log.full_name || 'عضو غير معروف'}</td>
+                    <td style={{padding:12, fontFamily:"'IBM Plex Mono'", fontWeight:700, color: isPositive ? C.red : (isNegative ? C.green : C.text)}}>
+                      <span dir="ltr">{isPositive ? '+' : ''}{log.amount} د.أ</span>
+                    </td>
+                    <td style={{padding:12, fontSize:12, color:C.muted, maxWidth:200, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>
+                      {log.reason || 'بدون ملاحظات'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -532,18 +599,9 @@ function AdminDashboard({ onLogout }) {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
       const res = await fetch(`${apiUrl}/api/admin/reports/members`, { headers: getAuthHeaders() });
-      
-      if (!res.ok) {
-        alert("تعذر تحميل التقرير (تأكد من الصلاحيات)");
-        return;
-      }
-
+      if (!res.ok) return alert("تعذر تحميل التقرير");
       const data = await res.json();
-      if (!Array.isArray(data)) {
-        alert("صيغة التقرير غير صحيحة");
-        return;
-      }
-
+      
       let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
       csvContent += "اسم العضو,رقم الجوال,الفرع,حالة العضوية,إجمالي المدفوعات (د.أ),الذمة المستحقة (د.أ),تاريخ آخر دفعة\n";
       
@@ -578,9 +636,12 @@ function AdminDashboard({ onLogout }) {
       <div style={{display:"flex", gap:10, borderBottom:`1px solid ${C.border}`, marginBottom:24}}>
         <button className={`tab-btn ${activeTab === "operations" ? "active" : ""}`} onClick={() => setActiveTab("operations")}>العمليات اليومية</button>
         <button className={`tab-btn ${activeTab === "members" ? "active" : ""}`} onClick={() => setActiveTab("members")}>إدارة الأعضاء والذمم</button>
+        <button className={`tab-btn ${activeTab === "audit" ? "active" : ""}`} onClick={() => setActiveTab("audit")}>سجل التدقيق (Audit)</button>
       </div>
 
-      {activeTab === "operations" ? <OperationsManager /> : <MembersManager />}
+      {activeTab === "operations" && <OperationsManager />}
+      {activeTab === "members" && <MembersManager />}
+      {activeTab === "audit" && <AuditLogsManager />}
       
     </div>
   );
