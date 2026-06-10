@@ -27,6 +27,7 @@ const getAuthHeaders = () => ({
   'Content-Type': 'application/json'
 });
 
+// ── Helper components ─────────────────────────────────────────────────────
 function Card({ children, style={} }) {
   return <div style={{ background:C.surf, border:`1px solid ${C.border}`, borderRadius:16, padding:"20px", ...style }}>{children}</div>;
 }
@@ -64,6 +65,16 @@ function Select({ label, value, onChange, options }) {
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </div>
+  );
+}
+
+// ⬇️ هذا هو المكون المفقود الذي تسبب في انهيار الشاشة! تم إضافته الآن.
+function Tag({ label, color=C.accent }) {
+  return (
+    <span style={{
+      background:`${color}20`, color, border:`1px solid ${color}40`,
+      borderRadius:6, padding:"2px 10px", fontSize:11, fontWeight:700,
+    }}>{label}</span>
   );
 }
 
@@ -105,7 +116,7 @@ function AdminLogin({ onLogin }) {
   );
 }
 
-// ── شاشة إدارة الأعضاء (محمية ومطورة) ──
+// ── شاشة إدارة الأعضاء ──
 function MembersManager() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -128,7 +139,6 @@ function MembersManager() {
       const res = await fetch(`${apiUrl}/api/admin/members`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
-        // حماية للتأكد من أن البيانات مصفوفة سليمة
         setMembers(Array.isArray(data) ? data : []);
       } else {
         setMembers([]);
@@ -198,10 +208,8 @@ function MembersManager() {
     } catch (err) { alert("تعذر الاتصال"); }
   };
 
-  // استخراج الفروع بطريقة آمنة تماماً
   const uniqueBranches = ["all", ...new Set(members.map(m => m.family_branch).filter(Boolean))];
 
-  // فلترة محمية 100% ضد الأخطاء (Null Safety) لمنع انهيار الشاشة البيضاء
   const filteredMembers = members.filter(m => {
     const name = m.full_name || "";
     const phone = m.phone_number || "";
@@ -276,7 +284,6 @@ function MembersManager() {
         )}
       </Card>
 
-      {/* نوافذ منبثقة */}
       {showAddEdit && (
         <div style={{position:"fixed", inset:0, background:"rgba(0,0,0,0.8)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100, padding:20}}>
           <Card style={{width:"100%", maxWidth:400}}>
@@ -313,7 +320,7 @@ function MembersManager() {
   );
 }
 
-// ── العمليات اليومية (محمية ومطورة) ──
+// ── العمليات اليومية ──
 function OperationsManager() {
   const [requests, setRequests] = useState([]);
   const [pendingReceipts, setPendingReceipts] = useState([]);
@@ -345,7 +352,6 @@ function OperationsManager() {
           fetch(`${apiUrl}/api/admin/pending-receipts`, { headers: getAuthHeaders() }).then(r=>r.json()).catch(()=>([])),
           fetch(`${apiUrl}/api/admin/members/list`, { headers: getAuthHeaders() }).then(r=>r.json()).catch(()=>([]))
         ]);
-        // حماية مصفوفات البيانات
         setRequests(Array.isArray(reqs) ? reqs : []);
         setPendingReceipts(Array.isArray(recs) ? recs : []);
         setMembersList(Array.isArray(mems) ? mems : []);
