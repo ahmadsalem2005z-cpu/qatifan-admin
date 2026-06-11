@@ -399,7 +399,7 @@ function OperationsManager() {
       )}
 
       {showExpenseForm && (
-        <Card style={{marginBottom:24, borderTop:`3px solid ${C.accent}`}}>
+        <Card style={{marginBottom:24, borderTop:`3px solid ${C.accent}`}} className="anim">
           <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>تسجيل مصروف جديد</div>
           <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16}}>
             <div onClick={() => setExpCategory("wedding")} style={{background:expCategory==="wedding"?C.accentSoft:C.surf2, border:`1px solid ${expCategory==="wedding"?C.accent:C.border}`, borderRadius:8, padding:12, textAlign:"center", cursor:"pointer"}}>
@@ -489,7 +489,6 @@ function OperationsManager() {
 function AdminDashboard({ onLogout }) {
   const [activeTab, setActiveTab] = useState("operations");
   
-  // بيانات التقرير السنوي
   const [annualReport, setAnnualReport] = useState(null);
   const [reportYear, setReportYear] = useState(new Date().getFullYear().toString());
   const [isGenerating, setIsGenerating] = useState(false);
@@ -517,7 +516,6 @@ function AdminDashboard({ onLogout }) {
     } catch (err) { alert("تعذر تحميل التقرير"); }
   };
 
-  // 💡 إصدار التقرير السنوي PDF الذكي
   const generateAnnualPDF = async () => {
     setIsGenerating(true);
     try {
@@ -526,7 +524,7 @@ function AdminDashboard({ onLogout }) {
       if (res.ok) {
         const data = await res.json();
         setAnnualReport(data);
-        setTimeout(() => window.print(), 500); // إعطاء الواجهة نصف ثانية لتُبنى قبل استدعاء نافذة الطباعة
+        setTimeout(() => window.print(), 500);
       } else alert("حدث خطأ أثناء استخراج التقرير");
     } catch (err) { alert("تعذر الاتصال بالسيرفر"); }
     setIsGenerating(false);
@@ -534,7 +532,6 @@ function AdminDashboard({ onLogout }) {
 
   return (
     <>
-      {/* 💡 هذه هي نافذة الـ PDF الوهمية (تظهر فقط عند الطباعة) */}
       {annualReport && (
         <div className="print-only">
           <div style={{textAlign:"center", borderBottom:"2px solid #333", paddingBottom:20, marginBottom:30}}>
@@ -602,9 +599,9 @@ function AdminDashboard({ onLogout }) {
             <div style={{fontSize:12, color:C.muted, marginTop:4}}>مركز إدارة صندوق عائلة قطيفان</div>
           </div>
           <div style={{display:"flex", gap:10, flexWrap: "wrap", alignItems:"center"}}>
-            <Btn onClick={downloadReportCSV} variant="green">📥 ملف الإكسيل</Btn>
+            {/* 💡 تم التعديل هنا ليكون النص "تقرير الأعضاء" بناءً على طلبك */}
+            <Btn onClick={downloadReportCSV} variant="green">📥 تقرير الأعضاء</Btn>
             
-            {/* 💡 أزرار التقرير السنوي (PDF) */}
             <div style={{display:"flex", background:C.surf2, borderRadius:8, overflow:"hidden", border:`1px solid ${C.border}`}}>
               <select style={{background:"transparent", border:"none", color:C.text, padding:"0 10px", outline:"none", cursor:"pointer"}} value={reportYear} onChange={e => setReportYear(e.target.value)}>
                 {Array.from({length: 10}, (_, i) => new Date().getFullYear() - i).map(y => <option key={y} value={y}>{y}</option>)}
