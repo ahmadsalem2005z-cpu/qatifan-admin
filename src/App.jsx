@@ -532,4 +532,38 @@ function AdminDashboard({ onLogout }) {
           <div style={{fontSize:12, color:C.muted, marginTop:4}}>مركز إدارة صندوق عائلة قطيفان</div>
         </div>
         <div style={{display:"flex", gap:10, flexWrap: "wrap", alignItems:"center"}}>
-          <Btn onClick
+          <Btn onClick={downloadReportCSV} variant="green">📥 تقرير الأعضاء</Btn>
+          
+          <div style={{display:"flex", background:C.surf2, borderRadius:8, overflow:"hidden", border:`1px solid ${C.border}`}}>
+            <select style={{background:"transparent", border:"none", color:C.text, padding:"0 10px", outline:"none", cursor:"pointer"}} value={reportYear} onChange={e => setReportYear(e.target.value)}>
+              {/* 💡 تم توسيع السنوات لتبدأ من العام الحالي حتى عام 1990 */}
+              {Array.from({length: yearsCount}, (_, i) => currentYear - i).map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <Btn onClick={generateAnnualPDF} variant="purple" style={{borderRadius:0}}>{isGenerating ? "⏳..." : "📊 التقرير السنوي PDF"}</Btn>
+          </div>
+
+          <Btn onClick={onLogout} variant="red">خروج</Btn>
+        </div>
+      </header>
+
+      {/* Tabs Navigation */}
+      <div style={{display:"flex", gap:10, borderBottom:`1px solid ${C.border}`, marginBottom:24, overflowX:"auto", paddingBottom:8}}>
+        <button className={`tab-btn ${activeTab === "operations" ? "active" : ""}`} onClick={() => setActiveTab("operations")}>العمليات اليومية</button>
+        <button className={`tab-btn ${activeTab === "members" ? "active" : ""}`} onClick={() => setActiveTab("members")}>إدارة الأعضاء والذمم</button>
+        <button className={`tab-btn ${activeTab === "audit" ? "active" : ""}`} onClick={() => setActiveTab("audit")}>سجل التدقيق (Audit)</button>
+        <button className={`tab-btn ${activeTab === "whatsapp" ? "active" : ""}`} onClick={() => setActiveTab("whatsapp")} style={{color: activeTab==="whatsapp"?"#25D366":""}}>تنبيهات الواتساب الآلية</button>
+      </div>
+
+      {activeTab === "operations" && <OperationsManager />}
+      {activeTab === "members" && <MembersManager />}
+      {activeTab === "audit" && <AuditLogsManager />}
+      {activeTab === "whatsapp" && <NotificationsManager />}
+      
+    </div>
+  );
+}
+
+export default function App() {
+  const [isAdminAuth, setIsAdminAuth] = useState(!!localStorage.getItem("admin_token"));
+  return isAdminAuth ? <AdminDashboard onLogout={() => {localStorage.removeItem("admin_token"); setIsAdminAuth(false);}} /> : <AdminLogin onLogin={() => setIsAdminAuth(true)} />;
+}
