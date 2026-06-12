@@ -12,18 +12,20 @@ const G = `
   .anim{animation:fadeUp .4s ease both}
   .tab-btn { background:none; border:none; color:#64748b; font-family:'Tajawal',sans-serif; font-size:15px; font-weight:700; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; transition:all .2s; }
   .tab-btn.active { color:#8b5cf6; border-bottom:3px solid #8b5cf6; }
-
-  @media print {
-    .no-print { display: none !important; }
-    .print-only { display: block !important; position: absolute; inset: 0; background: white; color: black; z-index: 9999; padding: 40px; font-family:'Tajawal',sans-serif; direction:rtl; min-height:100vh; }
-    body { background: white; margin: 0; padding: 0; }
-  }
-  @media screen { .print-only { display: none !important; } }
 `;
 
-const C = { bg:"#050505", surf:"#0f172a", surf2:"#1e293b", border:"#334155", accent:"#8b5cf6", accentSoft:"#2e1065", gold:"#fbbf24", goldSoft:"#452000", green:"#10b981", red:"#ef4444", text:"#f8fafc", muted:"#94a3b8", dim:"#64748b" };
+const C = {
+  bg:"#050505", surf:"#0f172a", surf2:"#1e293b",
+  border:"#334155", accent:"#8b5cf6", accentSoft:"#2e1065",
+  gold:"#fbbf24", goldSoft:"#452000",
+  green:"#10b981", red:"#ef4444",
+  text:"#f8fafc", muted:"#94a3b8", dim:"#64748b",
+};
 
-const getAuthHeaders = () => ({ 'Authorization': `Bearer ${localStorage.getItem("admin_token")}`, 'Content-Type': 'application/json' });
+const getAuthHeaders = () => ({
+  'Authorization': `Bearer ${localStorage.getItem("admin_token")}`,
+  'Content-Type': 'application/json'
+});
 
 function Card({ children, style={} }) { return <div style={{ background:C.surf, border:`1px solid ${C.border}`, borderRadius:16, padding:"20px", ...style }}>{children}</div>; }
 
@@ -62,7 +64,7 @@ function AdminLogin({ onLogin }) {
   );
 }
 
-// ── 1. Operations Manager ── (كما هو لم يتغير)
+// ── Operations Manager ──
 function OperationsManager() {
   const [requests, setRequests] = useState([]);
   const [pendingReceipts, setPendingReceipts] = useState([]);
@@ -108,7 +110,7 @@ function OperationsManager() {
   if (loading) return <div style={{textAlign:"center", color:C.muted}}>⏳ جاري التحميل...</div>;
 
   return (
-    <div className="anim no-print">
+    <div className="anim">
       <div style={{display:"flex", gap:10, marginBottom:20, flexWrap:"wrap"}}>
         <Btn onClick={() => {setShowAnnForm(!showAnnForm); setShowExpenseForm(false);}} variant={showAnnForm ? "ghost" : "primary"}>{showAnnForm ? "إلغاء الإعلان" : "📣 نشر إعلان"}</Btn>
         <Btn onClick={() => {setShowExpenseForm(!showExpenseForm); setShowAnnForm(false);}} variant={showExpenseForm ? "ghost" : "primary"}>{showExpenseForm ? "إلغاء السحب" : "➖ سحب مصروف"}</Btn>
@@ -185,7 +187,7 @@ function OperationsManager() {
   );
 }
 
-// ── 2. Members Manager ──
+// ── Members Manager ──
 function MembersManager() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -221,7 +223,7 @@ function MembersManager() {
   const filteredMembers = members.filter(m => { const name = m.full_name || ""; const phone = m.phone_number || ""; const branch = m.family_branch || ""; const q = searchQuery || ""; const matchQuery = name.includes(q) || phone.includes(q); const matchBranch = filterBranch === "all" || branch === filterBranch; const debtVal = parseFloat(m.total_debt || 0); const matchStatus = filterStatus === "all" ? true : filterStatus === "paid" ? debtVal <= 0 : debtVal > 0; return matchQuery && matchBranch && matchStatus; });
 
   return (
-    <div className="anim no-print">
+    <div className="anim">
       <div style={{display:"flex", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:10}}>
         <Btn onClick={() => { setCurrentMember(null); setFormData({ full_name: "", phone_number: "", family_branch: "الفرع الأول", total_debt: 0, last_paid_date: "", audit_reason: "" }); setShowAddEdit(true); }} variant="green">+ إضافة عضو جديد</Btn>
         <Btn onClick={() => setShowBulk(true)} variant="primary">⚖️ تعديل الذمم الجماعي</Btn>
@@ -269,7 +271,7 @@ function MembersManager() {
   );
 }
 
-// ── 3. Audit Logs Manager ──
+// ── Audit Logs Manager ──
 function AuditLogsManager() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -280,7 +282,7 @@ function AuditLogsManager() {
 
   if (loading) return <div style={{textAlign:"center", color:C.muted}}>⏳ جاري التحميل...</div>;
   return (
-    <Card className="anim no-print">
+    <Card className="anim">
       <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>سجل التدقيق المالي</div>
       {logs.length === 0 ? <div style={{textAlign:"center", color:C.dim, padding:20}}>لا توجد حركات.</div> : (
         <div style={{overflowX:"auto"}}>
@@ -299,7 +301,7 @@ function AuditLogsManager() {
   );
 }
 
-// ── 4. Notifications Manager (قسم الواتساب الآلي الجديد) ──
+// ── Notifications Manager ──
 function NotificationsManager() {
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -328,18 +330,11 @@ function NotificationsManager() {
   };
 
   const handleSendWhatsApp = async (msg) => {
-    // 1. تنسيق الرقم (إذا كان يبدأ بـ 0 نحوله إلى مفتاح الأردن 962، وإلا نتركه)
     let phone = msg.phone_number.trim();
     if (phone.startsWith('0')) phone = '962' + phone.substring(1);
-    
-    // 2. تجهيز النص للرابط
     const text = encodeURIComponent(msg.message_body);
     const waLink = `https://wa.me/${phone}?text=${text}`;
-    
-    // 3. فتح الواتساب
     window.open(waLink, '_blank');
-
-    // 4. حذف الرسالة من الطابور (علامة تم الإرسال)
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
       await fetch(`${apiUrl}/api/admin/notifications/${msg.id}/sent`, { method: 'POST', headers: getAuthHeaders() });
@@ -348,7 +343,7 @@ function NotificationsManager() {
   };
 
   return (
-    <Card className="anim no-print">
+    <Card className="anim">
       <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16}}>
         <div>
           <div style={{fontSize:15, fontWeight:700, color:C.text}}>طابور تنبيهات الواتساب الآلية</div>
@@ -356,11 +351,8 @@ function NotificationsManager() {
         </div>
         <Btn onClick={handleGenerate} variant="purple">{isGenerating ? "⏳ جاري التوليد..." : "⚙️ توليد رسائل للمتعثرين الآن"}</Btn>
       </div>
-
       {loading ? <div style={{textAlign:"center", color:C.muted, padding:20}}>⏳ جاري التحميل...</div> : queue.length === 0 ? (
-        <div style={{textAlign:"center", padding:30, color:C.dim, border:`1px dashed ${C.border}`, borderRadius:12}}>
-          🎉 لا توجد رسائل معلقة في الطابور! جميع المتعثرين تم تنبيههم أو لا يوجد متعثرين.
-        </div>
+        <div style={{textAlign:"center", padding:30, color:C.dim, border:`1px dashed ${C.border}`, borderRadius:12}}>🎉 لا توجد رسائل معلقة في الطابور!</div>
       ) : (
         <div style={{display:"flex", flexDirection:"column", gap:12}}>
           {queue.map(msg => (
@@ -383,112 +375,161 @@ function NotificationsManager() {
 function AdminDashboard({ onLogout }) {
   const [activeTab, setActiveTab] = useState("operations");
   
-  const [annualReport, setAnnualReport] = useState(null);
-  const [reportYear, setReportYear] = useState(new Date().getFullYear().toString());
+  // حساب عدد السنوات بداية من عام 1990 وحتى العام الحالي ديناميكياً
+  const currentYear = new Date().getFullYear();
+  const startYear = 1990;
+  const yearsCount = currentYear - startYear + 1;
+
+  const [reportYear, setReportYear] = useState(currentYear.toString());
   const [isGenerating, setIsGenerating] = useState(false);
 
   const downloadReportCSV = async () => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
       const res = await fetch(`${apiUrl}/api/admin/reports/members`, { headers: getAuthHeaders() });
-      if (!res.ok) return alert("تعذر تحميل التقرير");
+      if (!res.ok) return alert("تعذر تحميل التقرير (تأكد من الصلاحيات)");
       const data = await res.json();
+      
       let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
       csvContent += "اسم العضو,رقم الجوال,الفرع,حالة العضوية,إجمالي المدفوعات (د.أ),الذمة المستحقة (د.أ),تاريخ آخر دفعة\n";
+      
       data.forEach(row => { 
         const formattedPhone = `="${row.phone_number || ''}"`;
         const memberStatus = row.membership_status === 'active' ? 'نشط' : 'مؤرشف';
         const lastPaid = row.last_paid_date ? new Date(row.last_paid_date).toLocaleDateString('en-GB') : 'غير محدد';
         csvContent += `${row.full_name || 'بدون اسم'},${formattedPhone},${row.family_branch || 'غير محدد'},${memberStatus},${row.total_paid || 0},${row.total_debt || 0},${lastPaid}\n`; 
       });
+      
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "تقرير_صندوق_قطيفان.csv");
       document.body.appendChild(link); link.click(); document.body.removeChild(link);
     } catch (err) { alert("تعذر تحميل التقرير"); }
   };
 
+  // 💡 الحل الجذري النهائي لطباعة التقرير السنوي عبر نافذة مستقلة
   const generateAnnualPDF = async () => {
     setIsGenerating(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
       const res = await fetch(`${apiUrl}/api/admin/reports/annual?year=${reportYear}`, { headers: getAuthHeaders() });
-      if (res.ok) { const data = await res.json(); setAnnualReport(data); setTimeout(() => window.print(), 500); } else alert("حدث خطأ");
-    } catch (err) { alert("تعذر الاتصال"); }
+      if (res.ok) {
+        const data = await res.json();
+        
+        const printWindow = window.open('', '_blank');
+        
+        let expensesHtml = '';
+        if (data.expenses_breakdown.length === 0) {
+          expensesHtml = `<tr><td colspan="2" style="text-align:center; color:#64748b; padding:10px; border:1px solid #ccc;">لا توجد مصروفات مسجلة هذا العام</td></tr>`;
+        } else {
+          expensesHtml = data.expenses_breakdown.map(exp => `
+            <tr>
+              <td style="border:1px solid #ccc; padding:10px;">${exp.category === 'wedding' ? 'نقوط زواج' : exp.category === 'condolence' ? 'مساعدة عزاء' : 'سلفة/أخرى'}</td>
+              <td style="border:1px solid #ccc; padding:10px; font-weight:bold;">${exp.total} د.أ</td>
+            </tr>
+          `).join('');
+        }
+
+        const htmlContent = `
+          <html dir="rtl">
+            <head>
+              <title>التقرير المالي السنوي - ${data.year}</title>
+              <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+              <style>
+                body { font-family: 'Tajawal', sans-serif; padding: 40px; color: #111827; background: #fff; }
+                .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+                .header h1 { margin: 0; font-size: 32px; color: #1e2d44; }
+                .header h2 { margin: 10px 0 0; color: #475569; font-size: 20px; }
+                .header p { font-size: 12px; color: #94a3b8; margin-top: 10px; }
+                
+                .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px; }
+                .summary-card { border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; }
+                .summary-card h3 { margin-top: 0; color: #334155; font-size: 16px; }
+                .summary-card p { font-size: 24px; font-weight: bold; margin: 10px 0; }
+                .income-text { color: #10b981; }
+                .expense-text { color: #ef4444; }
+
+                table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+                th, td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; }
+                th { background: #f1f5f9; color: #334155; font-size: 14px; }
+                td { font-size: 14px; }
+
+                .kpi-section { display: flex; justify-content: space-between; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; }
+                .kpi-item { display: flex; flex-direction: column; gap: 5px; }
+                .kpi-label { font-size: 14px; color: #475569; }
+                .kpi-val { font-size: 22px; font-weight: bold; color: #0f172a; }
+                .kpi-val.warn { color: #eab308; }
+
+                .footer { margin-top: 60px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px; }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <h1>صندوق عائلة قطيفان التعاوني</h1>
+                <h2>التقرير المالي السنوي الشامل لعام ${data.year}</h2>
+                <p>تاريخ الإصدار: ${new Date().toLocaleDateString('ar-JO')}</p>
+              </div>
+
+              <div class="summary-grid">
+                <div class="summary-card">
+                  <h3>ملخص إيرادات ${data.year}</h3>
+                  <p class="income-text">${data.total_income} د.أ</p>
+                </div>
+                <div class="summary-card">
+                  <h3>ملخص مصروفات ${data.year}</h3>
+                  <p class="expense-text">${data.total_expenses} د.أ</p>
+                </div>
+              </div>
+
+              <h3 style="color:#1e2d44; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">تفصيل المصروفات حسب البند</h3>
+              <table>
+                <thead>
+                  <tr><th>بند الصرف</th><th>المبلغ الإجمالي</th></tr>
+                </thead>
+                <tbody>
+                  ${expensesHtml}
+                </tbody>
+              </table>
+
+              <h3 style="color:#1e2d44; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">الحالة المالية التراكمية للصندوق (حتى اللحظة)</h3>
+              <div class="kpi-section">
+                <div class="kpi-item">
+                  <span class="kpi-label">إجمالي الديون غير المحصلة من الأعضاء:</span>
+                  <span class="kpi-val warn">${data.total_debt} د.أ</span>
+                </div>
+                <div class="kpi-item">
+                  <span class="kpi-label">عدد الأعضاء النشطين حالياً:</span>
+                  <span class="kpi-val">${data.active_members} عضو</span>
+                </div>
+              </div>
+
+              <div class="footer">
+                هذا التقرير مُصدَر إلكترونياً من نظام إدارة صندوق العائلة ولا يحتاج إلى ختم.
+              </div>
+            </body>
+          </html>
+        `;
+        
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        
+        setTimeout(() => {
+          printWindow.focus();
+          printWindow.print();
+          printWindow.close();
+        }, 800);
+
+      } else alert("حدث خطأ أثناء استخراج التقرير");
+    } catch (err) { alert("تعذر الاتصال بالسيرفر"); }
     setIsGenerating(false);
   };
 
   return (
-    <>
-      {annualReport && (
-        <div className="print-only">
-          <div style={{textAlign:"center", borderBottom:"2px solid #333", paddingBottom:20, marginBottom:30}}>
-            <h1 style={{margin:0, fontSize:32}}>صندوق عائلة قطيفان التعاوني</h1>
-            <h2 style={{margin:"10px 0 0", color:"#555"}}>التقرير المالي السنوي الشامل لعام {annualReport.year}</h2>
-            <div style={{fontSize:12, color:"#888", marginTop:10}}>تم الإصدار في: {new Date().toLocaleDateString('ar-JO')}</div>
-          </div>
-          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:40}}>
-            <div style={{border:"1px solid #ddd", padding:20, borderRadius:8}}>
-              <h3 style={{marginTop:0}}>ملخص إيرادات {annualReport.year}</h3>
-              <p style={{fontSize:24, fontWeight:"bold", color:"#10b981", margin:"10px 0"}}>{annualReport.total_income} د.أ</p>
-            </div>
-            <div style={{border:"1px solid #ddd", padding:20, borderRadius:8}}>
-              <h3 style={{marginTop:0}}>ملخص مصروفات {annualReport.year}</h3>
-              <p style={{fontSize:24, fontWeight:"bold", color:"#ef4444", margin:"10px 0"}}>{annualReport.total_expenses} د.أ</p>
-            </div>
-          </div>
-          <h3 style={{borderBottom:"1px solid #ddd", paddingBottom:10}}>تفصيل المصروفات حسب البند</h3>
-          <table style={{width:"100%", borderCollapse:"collapse", marginBottom:40}}>
-            <thead><tr style={{background:"#f5f5f5"}}><th style={{border:"1px solid #ccc", padding:10, textAlign:"right"}}>بند الصرف</th><th style={{border:"1px solid #ccc", padding:10, textAlign:"right"}}>المبلغ الإجمالي</th></tr></thead>
-            <tbody>
-              {annualReport.expenses_breakdown.length === 0 ? <tr><td colSpan={2} style={{padding:10, textAlign:"center", border:"1px solid #ccc"}}>لا توجد مصروفات</td></tr> : (
-                annualReport.expenses_breakdown.map((exp, idx) => <tr key={idx}><td style={{border:"1px solid #ccc", padding:10}}>{exp.category === 'wedding' ? 'نقوط زواج' : exp.category === 'condolence' ? 'مساعدة عزاء' : 'سلفة/أخرى'}</td><td style={{border:"1px solid #ccc", padding:10, fontWeight:"bold"}}>{exp.total} د.أ</td></tr>)
-              )}
-            </tbody>
-          </table>
-          <div style={{marginTop:80, textAlign:"center", fontSize:12, color:"#999"}}>هذا التقرير مُصدَر إلكترونياً من نظام إدارة صندوق العائلة ولا يحتاج إلى ختم.</div>
+    <div className="anim" style={{padding:"20px", maxWidth:900, margin:"0 auto"}}>
+      <style>{G}</style>
+      <header style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:24, flexWrap: "wrap", gap: "10px"}}>
+        <div>
+          <h1 style={{fontSize:22, color:C.accent}}>لوحة تحكم المدير</h1>
+          <div style={{fontSize:12, color:C.muted, marginTop:4}}>مركز إدارة صندوق عائلة قطيفان</div>
         </div>
-      )}
-
-      <div className="anim no-print" style={{padding:"20px", maxWidth:900, margin:"0 auto"}}>
-        <style>{G}</style>
-        <header style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:24, flexWrap: "wrap", gap: "10px"}}>
-          <div>
-            <h1 style={{fontSize:22, color:C.accent}}>لوحة تحكم المدير</h1>
-            <div style={{fontSize:12, color:C.muted, marginTop:4}}>مركز إدارة صندوق عائلة قطيفان</div>
-          </div>
-          <div style={{display:"flex", gap:10, flexWrap: "wrap", alignItems:"center"}}>
-            <Btn onClick={downloadReportCSV} variant="green">📥 تقرير الأعضاء</Btn>
-            <div style={{display:"flex", background:C.surf2, borderRadius:8, overflow:"hidden", border:`1px solid ${C.border}`}}>
-              <select style={{background:"transparent", border:"none", color:C.text, padding:"0 10px", outline:"none", cursor:"pointer"}} value={reportYear} onChange={e => setReportYear(e.target.value)}>{Array.from({length: 10}, (_, i) => new Date().getFullYear() - i).map(y => <option key={y} value={y}>{y}</option>)}</select>
-              <Btn onClick={generateAnnualPDF} variant="purple" style={{borderRadius:0}}>{isGenerating ? "⏳..." : "📊 التقرير السنوي PDF"}</Btn>
-            </div>
-            <Btn onClick={onLogout} variant="red">خروج</Btn>
-          </div>
-        </header>
-
-        {/* 💡 Tabs Navigation */}
-        <div style={{display:"flex", gap:10, borderBottom:`1px solid ${C.border}`, marginBottom:24, overflowX:"auto", paddingBottom:8}}>
-          <button className={`tab-btn ${activeTab === "operations" ? "active" : ""}`} onClick={() => setActiveTab("operations")}>العمليات اليومية</button>
-          <button className={`tab-btn ${activeTab === "members" ? "active" : ""}`} onClick={() => setActiveTab("members")}>إدارة الأعضاء والذمم</button>
-          <button className={`tab-btn ${activeTab === "audit" ? "active" : ""}`} onClick={() => setActiveTab("audit")}>سجل التدقيق (Audit)</button>
-          
-          {/* 💡 التبويبة الجديدة للواتساب */}
-          <button className={`tab-btn ${activeTab === "whatsapp" ? "active" : ""}`} onClick={() => setActiveTab("whatsapp")} style={{color: activeTab==="whatsapp"?"#25D366":""}}>
-             تنبيهات الواتساب الآلية
-          </button>
-        </div>
-
-        {activeTab === "operations" && <OperationsManager />}
-        {activeTab === "members" && <MembersManager />}
-        {activeTab === "audit" && <AuditLogsManager />}
-        {activeTab === "whatsapp" && <NotificationsManager />}
-        
-      </div>
-    </>
-  );
-}
-
-export default function App() {
-  const [isAdminAuth, setIsAdminAuth] = useState(!!localStorage.getItem("admin_token"));
-  return isAdminAuth ? <AdminDashboard onLogout={() => {localStorage.removeItem("admin_token"); setIsAdminAuth(false);}} /> : <AdminLogin onLogin={() => setIsAdminAuth(true)} />;
-}
+        <div style={{display:"flex", gap:10, flexWrap: "wrap", alignItems:"center"}}>
+          <Btn onClick
