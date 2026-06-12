@@ -12,6 +12,15 @@ const G = `
   .anim{animation:fadeUp .4s ease both}
   .tab-btn { background:none; border:none; color:#64748b; font-family:'Tajawal',sans-serif; font-size:15px; font-weight:700; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; transition:all .2s; }
   .tab-btn.active { color:#8b5cf6; border-bottom:3px solid #8b5cf6; }
+
+  @media print {
+    .no-print { display: none !important; }
+    .print-only { display: block !important; position: absolute; inset: 0; background: white; color: black; z-index: 9999; padding: 40px; font-family:'Tajawal',sans-serif; direction:rtl; min-height:100vh; }
+    body { background: white; margin: 0; padding: 0; }
+  }
+  @media screen {
+    .print-only { display: none !important; }
+  }
 `;
 
 const C = {
@@ -41,7 +50,8 @@ function Input({ label, value, onChange, type="text", placeholder, textarea, row
 
 function Select({ label, value, onChange, options }) {
   const s = { width:"100%", padding:"10px 14px", background:C.surf2, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, fontSize:13, fontFamily:"'Tajawal',sans-serif", outline:"none" };
-  return <div style={{marginBottom:16}}>{label && <label style={{display:"block", fontSize:12, color:C.dim, marginBottom:6}}>{label}</label>}<select style={s} value={value} onChange={e=>onChange(e.target.value)}>{options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select></div>;
+  // 💡 تم إضافة الخلفية الداكنة للخيارات هنا
+  return <div style={{marginBottom:16}}>{label && <label style={{display:"block", fontSize:12, color:C.dim, marginBottom:6}}>{label}</label>}<select style={s} value={value} onChange={e=>onChange(e.target.value)}>{options.map(o => <option key={o.value} value={o.value} style={{background:C.surf2, color:C.text}}>{o.label}</option>)}</select></div>;
 }
 
 function Tag({ label, color=C.accent }) { return <span style={{ background:`${color}20`, color, border:`1px solid ${color}40`, borderRadius:6, padding:"2px 10px", fontSize:11, fontWeight:700 }}>{label}</span>; }
@@ -375,7 +385,6 @@ function NotificationsManager() {
 function AdminDashboard({ onLogout }) {
   const [activeTab, setActiveTab] = useState("operations");
   
-  // حساب عدد السنوات بداية من عام 1990 وحتى العام الحالي ديناميكياً
   const currentYear = new Date().getFullYear();
   const startYear = 1990;
   const yearsCount = currentYear - startYear + 1;
@@ -406,7 +415,6 @@ function AdminDashboard({ onLogout }) {
     } catch (err) { alert("تعذر تحميل التقرير"); }
   };
 
-  // 💡 الحل الجذري النهائي لطباعة التقرير السنوي عبر نافذة مستقلة
   const generateAnnualPDF = async () => {
     setIsGenerating(true);
     try {
@@ -524,7 +532,7 @@ function AdminDashboard({ onLogout }) {
   };
 
   return (
-    <div className="anim" style={{padding:"20px", maxWidth:900, margin:"0 auto"}}>
+    <div className="anim no-print" style={{padding:"20px", maxWidth:900, margin:"0 auto"}}>
       <style>{G}</style>
       <header style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:24, flexWrap: "wrap", gap: "10px"}}>
         <div>
@@ -536,8 +544,8 @@ function AdminDashboard({ onLogout }) {
           
           <div style={{display:"flex", background:C.surf2, borderRadius:8, overflow:"hidden", border:`1px solid ${C.border}`}}>
             <select style={{background:"transparent", border:"none", color:C.text, padding:"0 10px", outline:"none", cursor:"pointer"}} value={reportYear} onChange={e => setReportYear(e.target.value)}>
-              {/* 💡 تم توسيع السنوات لتبدأ من العام الحالي حتى عام 1990 */}
-              {Array.from({length: yearsCount}, (_, i) => currentYear - i).map(y => <option key={y} value={y}>{y}</option>)}
+              {/* 💡 هنا تم إصلاح لون الخيارات (options) لتظهر واضحة */}
+              {Array.from({length: yearsCount}, (_, i) => currentYear - i).map(y => <option key={y} value={y} style={{background: C.surf2, color: C.text}}>{y}</option>)}
             </select>
             <Btn onClick={generateAnnualPDF} variant="purple" style={{borderRadius:0}}>{isGenerating ? "⏳..." : "📊 التقرير السنوي PDF"}</Btn>
           </div>
