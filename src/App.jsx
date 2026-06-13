@@ -12,6 +12,15 @@ const G = `
   .anim{animation:fadeUp .4s ease both}
   .tab-btn { background:none; border:none; color:#64748b; font-family:'Tajawal',sans-serif; font-size:15px; font-weight:700; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; transition:all .2s; }
   .tab-btn.active { color:#8b5cf6; border-bottom:3px solid #8b5cf6; }
+
+  @media print {
+    .no-print { display: none !important; }
+    .print-only { display: block !important; position: absolute; inset: 0; background: white; color: black; z-index: 9999; padding: 40px; font-family:'Tajawal',sans-serif; direction:rtl; min-height:100vh; }
+    body { background: white; margin: 0; padding: 0; }
+  }
+  @media screen {
+    .print-only { display: none !important; }
+  }
 `;
 
 const C = {
@@ -79,7 +88,7 @@ function OperationsManager() {
   const [donName, setDonName] = useState("");
   const [donNote, setDonNote] = useState("");
   const [donMemberId, setDonMemberId] = useState("");
-  const [donPublish, setDonPublish] = useState(true); // 💡 خيار النشر الافتراضي مفعّل
+  const [donPublish, setDonPublish] = useState(true);
   const [isSubmittingDon, setIsSubmittingDon] = useState(false);
 
   const [selectedImage, setSelectedImage] = useState(null);
@@ -100,10 +109,26 @@ function OperationsManager() {
     if (!window.confirm(`متأكد؟`)) return;
     try { const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; const res = await fetch(`${apiUrl}/api/admin/requests/${id}/status`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ status: newStatus }) }); if (res.ok) setRequests(requests.map(req => req.id === id ? { ...req, status: newStatus } : req)); } catch (error) { }
   };
+  
+  // 💡 التعديل هنا: تحديث رسالة الإدخال لتلائم المنطق الديناميكي
   const handleApprove = async (receiptId) => {
-    const amountStr = window.prompt("كم القيمة المودعة؟ (2 دينار = 1 شهر)", "2"); if (amountStr === null) return; const amount = parseFloat(amountStr); if (isNaN(amount) || amount <= 0) return alert("مبلغ غير صحيح");
-    try { const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; const res = await fetch(`${apiUrl}/api/admin/approve-receipt/${receiptId}`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ amount }) }); if (res.ok) { setPendingReceipts(prev => prev.filter(rec => rec.id !== receiptId)); alert("تم الاعتماد"); } } catch (err) { }
+    const amountStr = window.prompt("كم القيمة المودعة بالدينار؟ (النظام سيحسب الأشهر تلقائياً)", "2"); 
+    if (amountStr === null) return; 
+    const amount = parseFloat(amountStr); 
+    if (isNaN(amount) || amount <= 0) return alert("مبلغ غير صحيح");
+    try { 
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; 
+      const res = await fetch(`${apiUrl}/api/admin/approve-receipt/${receiptId}`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ amount }) }); 
+      if (res.ok) { 
+        setPendingReceipts(prev => prev.filter(rec => rec.id !== receiptId)); 
+        alert("تم الاعتماد بنجاح وتحديث تاريخ التغطية"); 
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || "تعذر الاعتماد");
+      }
+    } catch (err) { alert("حدث خطأ في الاتصال"); }
   };
+  
   const handleRejectReceipt = async (receiptId) => {
     if (!window.confirm("متأكد من الرفض؟")) return;
     try { const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; const res = await fetch(`${apiUrl}/api/admin/reject-receipt/${receiptId}`, { method: 'POST', headers: getAuthHeaders() }); if (res.ok) setPendingReceipts(prev => prev.filter(rec => rec.id !== receiptId)); } catch (err) {}
@@ -126,7 +151,6 @@ function OperationsManager() {
       const res = await fetch(`${apiUrl}/api/admin/donations`, { 
         method: 'POST', 
         headers: getAuthHeaders(), 
-        // 💡 تمرير خيار النشر للسيرفر
         body: JSON.stringify({ member_id: donMemberId || null, donor_name: donName, amount: donAmount, note: donNote, publish_announcement: donPublish }) 
       });
       if (res.ok) { alert("تم تسجيل التبرع بنجاح"); setShowDonationForm(false); setDonAmount(""); setDonName(""); setDonNote(""); setDonPublish(true); }
@@ -152,7 +176,6 @@ function OperationsManager() {
           <Input label="مبلغ التبرع (د.أ) *" type="number" value={donAmount} onChange={setDonAmount} />
           <Input label="ملاحظات *" value={donNote} onChange={setDonNote} placeholder="مثال: تبرع لوجه الله تعالى" />
           
-          {/* 💡 خيار نشر الإعلان المرئي للإدارة */}
           <label style={{display:"flex", alignItems:"center", gap:10, marginBottom:16, cursor:"pointer"}}>
             <input type="checkbox" checked={donPublish} onChange={(e) => setDonPublish(e.target.checked)} style={{width:16, height:16, cursor:"pointer"}} />
             <span style={{fontSize:13, color:C.text}}>نشر رسالة شكر للمتبرع في لوحة الإعلانات لجميع الأعضاء 📣</span>
