@@ -110,7 +110,6 @@ function OperationsManager() {
     try { const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; const res = await fetch(`${apiUrl}/api/admin/requests/${id}/status`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ status: newStatus }) }); if (res.ok) setRequests(requests.map(req => req.id === id ? { ...req, status: newStatus } : req)); } catch (error) { }
   };
   
-  // 💡 التعديل هنا: تحديث رسالة الإدخال لتلائم المنطق الديناميكي
   const handleApprove = async (receiptId) => {
     const amountStr = window.prompt("كم القيمة المودعة بالدينار؟ (النظام سيحسب الأشهر تلقائياً)", "2"); 
     if (amountStr === null) return; 
@@ -344,10 +343,40 @@ function MembersManager() {
 function AuditLogsManager() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // 💡 إضافة حالات الفلاتر الجديدة
+  const [searchQuery, setSearchQuery] = useState("");
+  const [actionFilter, setActionFilter] = useState("all");
+
   useEffect(() => {
-    const fetchLogs = async () => { try { const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; const res = await fetch(`${apiUrl}/api/admin/audit-logs`, { headers: getAuthHeaders() }); if (res.ok) setLogs(await res.json()); } catch (err) {} finally { setLoading(false); } };
+    const fetchLogs = async () => { 
+      try { 
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; 
+        const res = await fetch(`${apiUrl}/api/admin/audit-logs`, { headers: getAuthHeaders() }); 
+        if (res.ok) setLogs(await res.json()); 
+      } catch (err) {} finally { setLoading(false); } 
+    };
     fetchLogs();
   }, []);
+
+  // 💡 محرك فلترة السجلات الماليّة
+  const filteredLogs = logs.filter(log => {
+    // 1. فلتر البحث النصي (اسم العضو أو الملاحظات)
+    const matchSearch = (log.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        (log.reason || '').toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // 2. فلتر التصنيفات (الإجراءات)
+    let matchAction = true;
+    if (actionFilter === "income") {
+      matchAction = log.action.includes('إيصال') || log.action.includes('تبرع');
+    } else if (actionFilter === "expense") {
+      matchAction = log.action.includes('مصروف') || log.action.includes('مساعدة');
+    } else if (actionFilter === "debt") {
+      matchAction = log.action.includes('ذمة') || log.action.includes('سلفة') || log.action.includes('تعديل');
+    }
+
+    return matchSearch && matchAction;
+  });
 
   if (loading) return <div style={{textAlign:"center", color:C.muted}}>⏳ جاري التحميل...</div>;
   return (
@@ -358,12 +387,32 @@ function AuditLogsManager() {
         <span style={{color:C.red}}>🔴 أموال خارجة (مصروف)</span>
         <span style={{color:C.gold}}>🟡 قيد ديون على الأعضاء</span>
       </div>
-      {logs.length === 0 ? <div style={{textAlign:"center", color:C.dim, padding:20}}>لا توجد حركات.</div> : (
+
+      {/* 💡 واجهة الفلاتر الجديدة المضافة أعلى الجدول */}
+      <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:12, marginBottom: 20, background: C.surf2, padding: 16, borderRadius: 12, border: `1px solid ${C.border}`}}>
+        <Input 
+          placeholder="بحث باسم العضو أو تفاصيل الحركة..." 
+          value={searchQuery} 
+          onChange={setSearchQuery} 
+        />
+        <Select 
+          value={actionFilter} 
+          onChange={setActionFilter} 
+          options={[
+            {label: "جميع الحركات المالية", value: "all"},
+            {label: "🟢 أموال داخلة (إيرادات وتبرعات)", value: "income"},
+            {label: "🔴 أموال خارجة (مصروفات ومساعدات)", value: "expense"},
+            {label: "🟡 قيود الديون (سلف وتعديلات)", value: "debt"}
+          ]} 
+        />
+      </div>
+
+      {filteredLogs.length === 0 ? <div style={{textAlign:"center", color:C.dim, padding:20}}>لا توجد حركات تطابق شروط البحث.</div> : (
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%", textAlign:"right", borderCollapse:"collapse", minWidth:800}}>
             <thead><tr style={{borderBottom:`1px solid ${C.border}`, color:C.muted, fontSize:12}}><th style={{padding:12}}>التاريخ والوقت</th><th style={{padding:12}}>الإجراء</th><th style={{padding:12}}>العضو المستهدف</th><th style={{padding:12}}>المبلغ والتأثير</th><th style={{padding:12}}>السبب / الملاحظات</th></tr></thead>
             <tbody>
-              {logs.map(log => {
+              {filteredLogs.map(log => {
                 const val = parseFloat(log.amount);
                 let displayColor = C.text;
                 let displayAmount = log.amount;
