@@ -343,8 +343,6 @@ function MembersManager() {
 function AuditLogsManager() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // 💡 إضافة حالات الفلاتر الجديدة
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
 
@@ -359,13 +357,10 @@ function AuditLogsManager() {
     fetchLogs();
   }, []);
 
-  // 💡 محرك فلترة السجلات الماليّة
   const filteredLogs = logs.filter(log => {
-    // 1. فلتر البحث النصي (اسم العضو أو الملاحظات)
     const matchSearch = (log.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
                         (log.reason || '').toLowerCase().includes(searchQuery.toLowerCase());
     
-    // 2. فلتر التصنيفات (الإجراءات)
     let matchAction = true;
     if (actionFilter === "income") {
       matchAction = log.action.includes('إيصال') || log.action.includes('تبرع');
@@ -388,7 +383,6 @@ function AuditLogsManager() {
         <span style={{color:C.gold}}>🟡 قيد ديون على الأعضاء</span>
       </div>
 
-      {/* 💡 واجهة الفلاتر الجديدة المضافة أعلى الجدول */}
       <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:12, marginBottom: 20, background: C.surf2, padding: 16, borderRadius: 12, border: `1px solid ${C.border}`}}>
         <Input 
           placeholder="بحث باسم العضو أو تفاصيل الحركة..." 
@@ -436,7 +430,7 @@ function AuditLogsManager() {
 
                 return ( 
                   <tr key={log.id} style={{borderBottom:`1px solid ${C.border}50`}}>
-                    <td style={{padding:12, fontSize:12, color:C.dim, textAlign:"right"}} dir="ltr">{new Date(log.created_at).toLocaleString('en-GB')}</td>
+                    <td style={{padding:12, fontSize:12, color:C.dim, textAlign:"right"} } dir="ltr">{new Date(log.created_at).toLocaleString('en-GB')}</td>
                     <td style={{padding:12}}><Tag label={log.action} color={displayColor === C.gold ? '#eab308' : displayColor} /></td>
                     <td style={{padding:12, fontSize:13, fontWeight:700}}>{log.full_name || 'عضو غير معروف'}</td>
                     <td style={{padding:12, fontFamily:"'IBM Plex Mono'", fontWeight:700, color: displayColor}}>
@@ -715,7 +709,7 @@ function AdminDashboard({ onLogout }) {
           <Btn onClick={downloadReportCSV} variant="green">📥 تقرير الأعضاء</Btn>
           
           <div style={{display:"flex", background:C.surf2, borderRadius:8, overflow:"hidden", border:`1px solid ${C.border}`}}>
-            <select style={{background:"transparent", border:"none", color:C.text, padding:"0 10px", outline:"none", cursor:"pointer"}} value={reportYear} onChange={e => setReportYear(e.target.value)}>
+            <select style={{background:"transparent", border:"none", color:C.text, padding:"0 10px", outline:"none", cursor:"pointer"} } value={reportYear} onChange={e => setReportYear(e.target.value)}>
               {Array.from({length: yearsCount}, (_, i) => currentYear - i).map(y => <option key={y} value={y} style={{background: C.surf2, color: C.text}}>{y}</option>)}
             </select>
             <Btn onClick={generateAnnualPDF} variant="purple" style={{borderRadius:0}}>{isGenerating ? "⏳..." : "📊 التقرير السنوي PDF"}</Btn>
