@@ -281,7 +281,6 @@ function MembersManager() {
 }
 
 // ── Audit Logs Manager ──
-// 💡 تم إصلاح منطق الألوان وإشارات السجل المالي هنا
 function AuditLogsManager() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -309,7 +308,6 @@ function AuditLogsManager() {
                 let displayColor = C.text;
                 let displayAmount = log.amount;
 
-                // المنطق المحاسبي البصري الصحيح
                 if (log.action.includes('إيصال')) {
                     displayColor = C.green;
                     displayAmount = `+ ${Math.abs(val)} د.أ (إيراد)`;
@@ -348,6 +346,7 @@ function AuditLogsManager() {
 }
 
 // ── Notifications Manager ──
+// 💡 تم إضافة أزرار وتوابع الحذف (الفردي والجماعي)
 function NotificationsManager() {
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -365,7 +364,7 @@ function NotificationsManager() {
   useEffect(() => { fetchQueue(); }, []);
 
   const handleGenerate = async () => {
-    if (!window.confirm("هل أنت متأكد من مسح قاعدة البيانات وتجهيز رسائل التذكير لجميع المتعثرين؟")) return;
+    if (!window.confirm("هل أنت متأكد من تجهيز رسائل التذكير لجميع المتعثرين؟")) return;
     setIsGenerating(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
@@ -388,14 +387,39 @@ function NotificationsManager() {
     } catch (err) {}
   };
 
+  // 💡 دالة الحذف الفردي
+  const handleDeleteNotification = async (id) => {
+    if (!window.confirm("هل أنت متأكد من حذف هذه الرسالة من الطابور؟")) return;
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
+      const res = await fetch(`${apiUrl}/api/admin/notifications/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+      if (res.ok) setQueue(prev => prev.filter(q => q.id !== id));
+    } catch (err) { alert("تعذر الحذف"); }
+  };
+
+  // 💡 دالة إفراغ الطابور بالكامل
+  const handleClearQueue = async () => {
+    if (!window.confirm("⚠️ هل أنت متأكد من مسح جميع الرسائل المعلقة في الطابور بالكامل؟")) return;
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
+      const res = await fetch(`${apiUrl}/api/admin/notifications`, { method: 'DELETE', headers: getAuthHeaders() });
+      if (res.ok) setQueue([]);
+    } catch (err) { alert("تعذر المسح"); }
+  };
+
   return (
     <Card className="anim">
-      <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16}}>
+      <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16, flexWrap:"wrap", gap:10}}>
         <div>
           <div style={{fontSize:15, fontWeight:700, color:C.text}}>طابور تنبيهات الواتساب الآلية</div>
           <div style={{fontSize:12, color:C.muted}}>يوجد {queue.length} رسالة جاهزة للإرسال</div>
         </div>
-        <Btn onClick={handleGenerate} variant="purple">{isGenerating ? "⏳ جاري التوليد..." : "⚙️ توليد رسائل للمتعثرين الآن"}</Btn>
+        <div style={{display:"flex", gap:10}}>
+          {queue.length > 0 && (
+            <Btn onClick={handleClearQueue} variant="ghost" style={{color: C.red, borderColor: C.red}}>🗑️ إفراغ الطابور</Btn>
+          )}
+          <Btn onClick={handleGenerate} variant="purple">{isGenerating ? "⏳ جاري التوليد..." : "⚙️ توليد للمتعثرين"}</Btn>
+        </div>
       </div>
       {loading ? <div style={{textAlign:"center", color:C.muted, padding:20}}>⏳ جاري التحميل...</div> : queue.length === 0 ? (
         <div style={{textAlign:"center", padding:30, color:C.dim, border:`1px dashed ${C.border}`, borderRadius:12}}>🎉 لا توجد رسائل معلقة في الطابور!</div>
@@ -408,7 +432,10 @@ function NotificationsManager() {
                 <div style={{fontSize:11, color:C.muted, marginTop:4, direction:"ltr", textAlign:"right"}}>{msg.phone_number}</div>
                 <div style={{fontSize:11, color:C.dim, marginTop:8, background:C.surf, padding:8, borderRadius:6, whiteSpace:"pre-wrap"}}>{msg.message_body}</div>
               </div>
-              <Btn variant="whatsapp" onClick={() => handleSendWhatsApp(msg)}>💬 إرسال عبر واتساب</Btn>
+              <div style={{display:"flex", gap:8}}>
+                <Btn variant="whatsapp" onClick={() => handleSendWhatsApp(msg)}>💬 إرسال</Btn>
+                <Btn variant="red" onClick={() => handleDeleteNotification(msg.id)}>🗑️ حذف</Btn>
+              </div>
             </div>
           ))}
         </div>
