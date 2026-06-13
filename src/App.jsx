@@ -12,15 +12,6 @@ const G = `
   .anim{animation:fadeUp .4s ease both}
   .tab-btn { background:none; border:none; color:#64748b; font-family:'Tajawal',sans-serif; font-size:15px; font-weight:700; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; transition:all .2s; }
   .tab-btn.active { color:#8b5cf6; border-bottom:3px solid #8b5cf6; }
-
-  @media print {
-    .no-print { display: none !important; }
-    .print-only { display: block !important; position: absolute; inset: 0; background: white; color: black; z-index: 9999; padding: 40px; font-family:'Tajawal',sans-serif; direction:rtl; min-height:100vh; }
-    body { background: white; margin: 0; padding: 0; }
-  }
-  @media screen {
-    .print-only { display: none !important; }
-  }
 `;
 
 const C = {
@@ -79,8 +70,18 @@ function OperationsManager() {
   const [pendingReceipts, setPendingReceipts] = useState([]);
   const [membersList, setMembersList] = useState([]);
   const [loading, setLoading] = useState(true);
+  
   const [showExpenseForm, setShowExpenseForm] = useState(false); const [expCategory, setExpCategory] = useState("wedding"); const [expLabel, setExpLabel] = useState(""); const [expAmount, setExpAmount] = useState(""); const [isSubmittingExp, setIsSubmittingExp] = useState(false);
   const [showAnnForm, setShowAnnForm] = useState(false); const [annTitle, setAnnTitle] = useState(""); const [annBody, setAnnBody] = useState(""); const [annType, setAnnType] = useState("update"); const [annTarget, setAnnTarget] = useState(""); const [isSubmittingAnn, setIsSubmittingAnn] = useState(false);
+  
+  // 💡 حالات التبرع
+  const [showDonationForm, setShowDonationForm] = useState(false);
+  const [donAmount, setDonAmount] = useState("");
+  const [donName, setDonName] = useState("");
+  const [donNote, setDonNote] = useState("");
+  const [donMemberId, setDonMemberId] = useState("");
+  const [isSubmittingDon, setIsSubmittingDon] = useState(false);
+
   const [selectedImage, setSelectedImage] = useState(null);
   const typeLabels = { loan: "سلفة", help: "مساعدة", condolence: "عزاء", wedding: "نقوط زواج" };
 
@@ -107,13 +108,30 @@ function OperationsManager() {
     if (!window.confirm("متأكد من الرفض؟")) return;
     try { const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; const res = await fetch(`${apiUrl}/api/admin/reject-receipt/${receiptId}`, { method: 'POST', headers: getAuthHeaders() }); if (res.ok) setPendingReceipts(prev => prev.filter(rec => rec.id !== receiptId)); } catch (err) {}
   };
+  
   const handleAddExpense = async () => {
     if (!expLabel || !expAmount) return; setIsSubmittingExp(true);
     try { const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; const res = await fetch(`${apiUrl}/api/admin/expenses`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ category: expCategory, label: expLabel, amount: expAmount }) }); if (res.ok) { alert("تم"); setShowExpenseForm(false); } } catch (err) {} setIsSubmittingExp(false);
   };
+  
   const handleAddAnnouncement = async () => {
     if (!annTitle || !annBody) return; setIsSubmittingAnn(true);
     try { const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; const res = await fetch(`${apiUrl}/api/admin/announcements`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ title: annTitle, body: annBody, type: annType, member_id: annTarget || null }) }); if (res.ok) { alert("تم النشر"); setShowAnnForm(false); } } catch (err) {} setIsSubmittingAnn(false);
+  };
+
+  // 💡 دالة تسجيل التبرع
+  const handleAddDonation = async () => {
+    if (!donAmount) return; setIsSubmittingDon(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app';
+      const res = await fetch(`${apiUrl}/api/admin/donations`, { 
+        method: 'POST', 
+        headers: getAuthHeaders(), 
+        body: JSON.stringify({ member_id: donMemberId || null, donor_name: donName, amount: donAmount, note: donNote }) 
+      });
+      if (res.ok) { alert("تم تسجيل التبرع بنجاح"); setShowDonationForm(false); setDonAmount(""); setDonName(""); setDonNote(""); }
+    } catch (err) { alert("تعذر تسجيل التبرع"); }
+    setIsSubmittingDon(false);
   };
 
   if (loading) return <div style={{textAlign:"center", color:C.muted}}>⏳ جاري التحميل...</div>;
@@ -121,9 +139,21 @@ function OperationsManager() {
   return (
     <div className="anim">
       <div style={{display:"flex", gap:10, marginBottom:20, flexWrap:"wrap"}}>
-        <Btn onClick={() => {setShowAnnForm(!showAnnForm); setShowExpenseForm(false);}} variant={showAnnForm ? "ghost" : "primary"}>{showAnnForm ? "إلغاء الإعلان" : "📣 نشر إعلان"}</Btn>
-        <Btn onClick={() => {setShowExpenseForm(!showExpenseForm); setShowAnnForm(false);}} variant={showExpenseForm ? "ghost" : "primary"}>{showExpenseForm ? "إلغاء السحب" : "➖ سحب مصروف"}</Btn>
+        <Btn onClick={() => {setShowAnnForm(!showAnnForm); setShowExpenseForm(false); setShowDonationForm(false);}} variant={showAnnForm ? "ghost" : "primary"}>{showAnnForm ? "إلغاء الإعلان" : "📣 نشر إعلان"}</Btn>
+        <Btn onClick={() => {setShowDonationForm(!showDonationForm); setShowExpenseForm(false); setShowAnnForm(false);}} variant={showDonationForm ? "ghost" : "green"}>{showDonationForm ? "إلغاء التبرع" : "➕ تسجيل تبرع"}</Btn>
+        <Btn onClick={() => {setShowExpenseForm(!showExpenseForm); setShowAnnForm(false); setShowDonationForm(false);}} variant={showExpenseForm ? "ghost" : "red"} style={showExpenseForm ? {} : {background:"#7f1d1d", color:"white"}}>{showExpenseForm ? "إلغاء السحب" : "➖ سحب مصروف"}</Btn>
       </div>
+
+      {showDonationForm && (
+        <Card style={{marginBottom:24, borderTop:`3px solid ${C.green}`}}>
+          <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>تسجيل تبرع للصندوق (بدون تأثير على الذمم)</div>
+          <Select label="اسم العضو المتبرع (اختياري)" value={donMemberId} onChange={setDonMemberId} options={[{label: "متبرع خارجي / غير مسجل", value: ""}, ...membersList.map(m => ({label: m.full_name || "بدون اسم", value: m.id}))]} />
+          {!donMemberId && <Input label="اسم المتبرع (إذا كان خارجياً)" value={donName} onChange={setDonName} placeholder="مثال: فاعل خير" />}
+          <Input label="مبلغ التبرع (د.أ) *" type="number" value={donAmount} onChange={setDonAmount} />
+          <Input label="ملاحظات *" value={donNote} onChange={setDonNote} placeholder="مثال: تبرع لوجه الله تعالى" />
+          <Btn onClick={handleAddDonation} variant="green" style={{width:"100%"}}>{isSubmittingDon ? "⏳..." : "✔️ تأكيد التبرع"}</Btn>
+        </Card>
+      )}
 
       {showAnnForm && (
         <Card style={{marginBottom:24, borderTop:`3px solid ${C.accent}`}}>
@@ -141,7 +171,7 @@ function OperationsManager() {
       )}
 
       {showExpenseForm && (
-        <Card style={{marginBottom:24, borderTop:`3px solid ${C.accent}`}}>
+        <Card style={{marginBottom:24, borderTop:`3px solid ${C.red}`}}>
           <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>تسجيل مصروف جديد</div>
           <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16}}>
             <div onClick={() => setExpCategory("wedding")} style={{background:expCategory==="wedding"?C.accentSoft:C.surf2, border:`1px solid ${expCategory==="wedding"?C.accent:C.border}`, borderRadius:8, padding:12, textAlign:"center", cursor:"pointer"}}><div style={{fontSize:20, marginBottom:4}}>💍</div><div style={{fontSize:12, color:C.text}}>نقوط زواج</div></div>
@@ -149,7 +179,7 @@ function OperationsManager() {
           </div>
           <Input label="وصف المصروف *" value={expLabel} onChange={setExpLabel} />
           <Input label="المبلغ (د.أ) *" type="number" value={expAmount} onChange={setExpAmount} />
-          <Btn onClick={handleAddExpense} style={{width:"100%"}}>{isSubmittingExp ? "⏳..." : "✔️ تأكيد السحب"}</Btn>
+          <Btn onClick={handleAddExpense} variant="red" style={{width:"100%", background:"#ef4444", color:"white"}}>{isSubmittingExp ? "⏳..." : "✔️ تأكيد السحب"}</Btn>
         </Card>
       )}
 
@@ -308,7 +338,7 @@ function AuditLogsManager() {
                 let displayColor = C.text;
                 let displayAmount = log.amount;
 
-                if (log.action.includes('إيصال')) {
+                if (log.action.includes('إيصال') || log.action.includes('تبرع')) {
                     displayColor = C.green;
                     displayAmount = `+ ${Math.abs(val)} د.أ (إيراد)`;
                 } else if (log.action.includes('مصروف') || log.action.includes('مساعدة')) {
@@ -346,7 +376,6 @@ function AuditLogsManager() {
 }
 
 // ── Notifications Manager ──
-// 💡 تم إضافة أزرار وتوابع الحذف (الفردي والجماعي)
 function NotificationsManager() {
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -387,7 +416,6 @@ function NotificationsManager() {
     } catch (err) {}
   };
 
-  // 💡 دالة الحذف الفردي
   const handleDeleteNotification = async (id) => {
     if (!window.confirm("هل أنت متأكد من حذف هذه الرسالة من الطابور؟")) return;
     try {
@@ -397,7 +425,6 @@ function NotificationsManager() {
     } catch (err) { alert("تعذر الحذف"); }
   };
 
-  // 💡 دالة إفراغ الطابور بالكامل
   const handleClearQueue = async () => {
     if (!window.confirm("⚠️ هل أنت متأكد من مسح جميع الرسائل المعلقة في الطابور بالكامل؟")) return;
     try {
@@ -478,6 +505,7 @@ function AdminDashboard({ onLogout }) {
     } catch (err) { alert("تعذر تحميل التقرير"); }
   };
 
+  // 💡 إضافة التبرعات لتقرير PDF
   const generateAnnualPDF = async () => {
     setIsGenerating(true);
     try {
@@ -544,6 +572,9 @@ function AdminDashboard({ onLogout }) {
                 <div class="summary-card">
                   <h3>ملخص إيرادات ${data.year}</h3>
                   <p class="income-text">${data.total_income} د.أ</p>
+                  <div style="font-size:12px; color:#64748b; margin-top:5px;">
+                    (اشتراكات: ${data.total_subscriptions} د.أ | تبرعات: ${data.total_donations} د.أ)
+                  </div>
                 </div>
                 <div class="summary-card">
                   <h3>ملخص مصروفات ${data.year}</h3>
