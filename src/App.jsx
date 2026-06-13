@@ -50,7 +50,6 @@ function Input({ label, value, onChange, type="text", placeholder, textarea, row
 
 function Select({ label, value, onChange, options }) {
   const s = { width:"100%", padding:"10px 14px", background:C.surf2, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, fontSize:13, fontFamily:"'Tajawal',sans-serif", outline:"none" };
-  // 💡 تم إضافة الخلفية الداكنة للخيارات هنا
   return <div style={{marginBottom:16}}>{label && <label style={{display:"block", fontSize:12, color:C.dim, marginBottom:6}}>{label}</label>}<select style={s} value={value} onChange={e=>onChange(e.target.value)}>{options.map(o => <option key={o.value} value={o.value} style={{background:C.surf2, color:C.text}}>{o.label}</option>)}</select></div>;
 }
 
@@ -282,6 +281,7 @@ function MembersManager() {
 }
 
 // ── Audit Logs Manager ──
+// 💡 تم إصلاح منطق الألوان وإشارات السجل المالي هنا
 function AuditLogsManager() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -292,16 +292,52 @@ function AuditLogsManager() {
 
   if (loading) return <div style={{textAlign:"center", color:C.muted}}>⏳ جاري التحميل...</div>;
   return (
-    <Card className="anim">
+    <Card className="anim no-print">
       <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>سجل التدقيق المالي</div>
+      <div style={{display:"flex", gap:12, marginBottom:20, fontSize:11}}>
+        <span style={{color:C.green}}>🟢 أموال داخلة (إيراد / سداد)</span>
+        <span style={{color:C.red}}>🔴 أموال خارجة (مصروف)</span>
+        <span style={{color:C.gold}}>🟡 قيد ديون على الأعضاء</span>
+      </div>
       {logs.length === 0 ? <div style={{textAlign:"center", color:C.dim, padding:20}}>لا توجد حركات.</div> : (
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%", textAlign:"right", borderCollapse:"collapse", minWidth:800}}>
             <thead><tr style={{borderBottom:`1px solid ${C.border}`, color:C.muted, fontSize:12}}><th style={{padding:12}}>التاريخ والوقت</th><th style={{padding:12}}>الإجراء</th><th style={{padding:12}}>العضو المستهدف</th><th style={{padding:12}}>المبلغ والتأثير</th><th style={{padding:12}}>السبب / الملاحظات</th></tr></thead>
             <tbody>
               {logs.map(log => {
-                const isPositive = parseFloat(log.amount) > 0; const isNegative = parseFloat(log.amount) < 0;
-                return ( <tr key={log.id} style={{borderBottom:`1px solid ${C.border}50`}}><td style={{padding:12, fontSize:12, color:C.dim, textAlign:"right"}} dir="ltr">{new Date(log.created_at).toLocaleString('en-GB')}</td><td style={{padding:12}}><Tag label={log.action} color={C.accent} /></td><td style={{padding:12, fontSize:13, fontWeight:700}}>{log.full_name || 'عضو غير معروف'}</td><td style={{padding:12, fontFamily:"'IBM Plex Mono'", fontWeight:700, color: isPositive ? C.red : (isNegative ? C.green : C.text)}}><span dir="ltr">{isPositive ? '+' : ''}{log.amount} د.أ</span></td><td style={{padding:12, fontSize:12, color:C.muted}}>{log.reason || 'بدون ملاحظات'}</td></tr> );
+                const val = parseFloat(log.amount);
+                let displayColor = C.text;
+                let displayAmount = log.amount;
+
+                // المنطق المحاسبي البصري الصحيح
+                if (log.action.includes('إيصال')) {
+                    displayColor = C.green;
+                    displayAmount = `+ ${Math.abs(val)} د.أ (إيراد)`;
+                } else if (log.action.includes('مصروف') || log.action.includes('مساعدة')) {
+                    displayColor = C.red;
+                    displayAmount = `- ${Math.abs(val)} د.أ (سحب)`;
+                } else if (log.action.includes('ذمة') || log.action.includes('سلفة')) {
+                    displayColor = C.gold;
+                    displayAmount = `+ ${Math.abs(val)} د.أ (قيد دين)`;
+                } else if (log.action.includes('تعديل')) {
+                    displayColor = val > 0 ? C.gold : C.green;
+                    displayAmount = val > 0 ? `+ ${Math.abs(val)} د.أ (قيد دين)` : `- ${Math.abs(val)} د.أ (إسقاط دين)`;
+                } else {
+                    displayColor = val > 0 ? C.green : C.red;
+                    displayAmount = val > 0 ? `+${val} د.أ` : `${val} د.أ`;
+                }
+
+                return ( 
+                  <tr key={log.id} style={{borderBottom:`1px solid ${C.border}50`}}>
+                    <td style={{padding:12, fontSize:12, color:C.dim, textAlign:"right"}} dir="ltr">{new Date(log.created_at).toLocaleString('en-GB')}</td>
+                    <td style={{padding:12}}><Tag label={log.action} color={displayColor === C.gold ? '#eab308' : displayColor} /></td>
+                    <td style={{padding:12, fontSize:13, fontWeight:700}}>{log.full_name || 'عضو غير معروف'}</td>
+                    <td style={{padding:12, fontFamily:"'IBM Plex Mono'", fontWeight:700, color: displayColor}}>
+                      <span dir="ltr">{displayAmount}</span>
+                    </td>
+                    <td style={{padding:12, fontSize:12, color:C.muted}}>{log.reason || 'بدون ملاحظات'}</td>
+                  </tr> 
+                );
               })}
             </tbody>
           </table>
@@ -544,7 +580,6 @@ function AdminDashboard({ onLogout }) {
           
           <div style={{display:"flex", background:C.surf2, borderRadius:8, overflow:"hidden", border:`1px solid ${C.border}`}}>
             <select style={{background:"transparent", border:"none", color:C.text, padding:"0 10px", outline:"none", cursor:"pointer"}} value={reportYear} onChange={e => setReportYear(e.target.value)}>
-              {/* 💡 هنا تم إصلاح لون الخيارات (options) لتظهر واضحة */}
               {Array.from({length: yearsCount}, (_, i) => currentYear - i).map(y => <option key={y} value={y} style={{background: C.surf2, color: C.text}}>{y}</option>)}
             </select>
             <Btn onClick={generateAnnualPDF} variant="purple" style={{borderRadius:0}}>{isGenerating ? "⏳..." : "📊 التقرير السنوي PDF"}</Btn>
