@@ -74,12 +74,12 @@ function OperationsManager() {
   const [showExpenseForm, setShowExpenseForm] = useState(false); const [expCategory, setExpCategory] = useState("wedding"); const [expLabel, setExpLabel] = useState(""); const [expAmount, setExpAmount] = useState(""); const [isSubmittingExp, setIsSubmittingExp] = useState(false);
   const [showAnnForm, setShowAnnForm] = useState(false); const [annTitle, setAnnTitle] = useState(""); const [annBody, setAnnBody] = useState(""); const [annType, setAnnType] = useState("update"); const [annTarget, setAnnTarget] = useState(""); const [isSubmittingAnn, setIsSubmittingAnn] = useState(false);
   
-  // 💡 حالات التبرع
   const [showDonationForm, setShowDonationForm] = useState(false);
   const [donAmount, setDonAmount] = useState("");
   const [donName, setDonName] = useState("");
   const [donNote, setDonNote] = useState("");
   const [donMemberId, setDonMemberId] = useState("");
+  const [donPublish, setDonPublish] = useState(true); // 💡 خيار النشر الافتراضي مفعّل
   const [isSubmittingDon, setIsSubmittingDon] = useState(false);
 
   const [selectedImage, setSelectedImage] = useState(null);
@@ -119,7 +119,6 @@ function OperationsManager() {
     try { const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; const res = await fetch(`${apiUrl}/api/admin/announcements`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ title: annTitle, body: annBody, type: annType, member_id: annTarget || null }) }); if (res.ok) { alert("تم النشر"); setShowAnnForm(false); } } catch (err) {} setIsSubmittingAnn(false);
   };
 
-  // 💡 دالة تسجيل التبرع
   const handleAddDonation = async () => {
     if (!donAmount) return; setIsSubmittingDon(true);
     try {
@@ -127,9 +126,10 @@ function OperationsManager() {
       const res = await fetch(`${apiUrl}/api/admin/donations`, { 
         method: 'POST', 
         headers: getAuthHeaders(), 
-        body: JSON.stringify({ member_id: donMemberId || null, donor_name: donName, amount: donAmount, note: donNote }) 
+        // 💡 تمرير خيار النشر للسيرفر
+        body: JSON.stringify({ member_id: donMemberId || null, donor_name: donName, amount: donAmount, note: donNote, publish_announcement: donPublish }) 
       });
-      if (res.ok) { alert("تم تسجيل التبرع بنجاح"); setShowDonationForm(false); setDonAmount(""); setDonName(""); setDonNote(""); }
+      if (res.ok) { alert("تم تسجيل التبرع بنجاح"); setShowDonationForm(false); setDonAmount(""); setDonName(""); setDonNote(""); setDonPublish(true); }
     } catch (err) { alert("تعذر تسجيل التبرع"); }
     setIsSubmittingDon(false);
   };
@@ -151,6 +151,13 @@ function OperationsManager() {
           {!donMemberId && <Input label="اسم المتبرع (إذا كان خارجياً)" value={donName} onChange={setDonName} placeholder="مثال: فاعل خير" />}
           <Input label="مبلغ التبرع (د.أ) *" type="number" value={donAmount} onChange={setDonAmount} />
           <Input label="ملاحظات *" value={donNote} onChange={setDonNote} placeholder="مثال: تبرع لوجه الله تعالى" />
+          
+          {/* 💡 خيار نشر الإعلان المرئي للإدارة */}
+          <label style={{display:"flex", alignItems:"center", gap:10, marginBottom:16, cursor:"pointer"}}>
+            <input type="checkbox" checked={donPublish} onChange={(e) => setDonPublish(e.target.checked)} style={{width:16, height:16, cursor:"pointer"}} />
+            <span style={{fontSize:13, color:C.text}}>نشر رسالة شكر للمتبرع في لوحة الإعلانات لجميع الأعضاء 📣</span>
+          </label>
+
           <Btn onClick={handleAddDonation} variant="green" style={{width:"100%"}}>{isSubmittingDon ? "⏳..." : "✔️ تأكيد التبرع"}</Btn>
         </Card>
       )}
@@ -505,7 +512,6 @@ function AdminDashboard({ onLogout }) {
     } catch (err) { alert("تعذر تحميل التقرير"); }
   };
 
-  // 💡 إضافة التبرعات لتقرير PDF
   const generateAnnualPDF = async () => {
     setIsGenerating(true);
     try {
