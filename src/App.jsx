@@ -339,38 +339,47 @@ function MembersManager() {
   );
 }
 
-// ── Audit Logs Manager ──
-// 💡 تم إصلاح الحماية الدفاعية هنا لمنع انهيار الشاشة
+// ── Audit Logs Manager (المحمية بالكامل 🛡️) ──
 function AuditLogsManager() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     const fetchLogs = async () => { 
       try { 
         const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; 
-        const res = await fetch(`${apiUrl}/api/admin/audit-logs`, { headers: getAuthHeaders() });
+        const res = await fetch(`${apiUrl}/api/admin/audit-logs`, { headers: getAuthHeaders() }); 
         const data = await res.json();
         if (res.ok) {
-          setLogs(Array.isArray(data) ? data : []);
+           setLogs(Array.isArray(data) ? data : []);
         } else {
-          setLogs([]);
+           setErrorMsg(data.error || "خطأ في جلب البيانات من السيرفر");
+           setLogs([]);
         }
-      } catch (err) { setLogs([]); } finally { setLoading(false); } 
+      } catch (err) { 
+        setErrorMsg("فشل الاتصال بالسيرفر. تأكد من الإنترنت.");
+        setLogs([]); 
+      } finally { 
+        setLoading(false); 
+      } 
     };
     fetchLogs();
   }, []);
 
-  const filteredLogs = logs.filter(log => {
-    // 💡 الحماية: إذا كان الحقل فارغاً في قاعدة البيانات، استبدله بنص فارغ لتجنب الخطأ
-    const actionStr = log.action || '';
-    const reasonStr = log.reason || '';
-    const nameStr = log.full_name || '';
+  const safeLogs = Array.isArray(logs) ? logs : [];
+  
+  const filteredLogs = safeLogs.filter(log => {
+    if (!log) return false;
+    // حماية تحويل القيم إلى نصوص String() لتجنب خطأ الـ null نهائياً
+    const actionStr = String(log.action || '');
+    const reasonStr = String(log.reason || '');
+    const nameStr = String(log.full_name || '');
+    const q = String(searchQuery || '').toLowerCase();
 
-    const matchSearch = nameStr.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                        reasonStr.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchSearch = nameStr.toLowerCase().includes(q) || reasonStr.toLowerCase().includes(q);
     
     let matchAction = true;
     if (actionFilter === "income") {
@@ -384,7 +393,14 @@ function AuditLogsManager() {
     return matchSearch && matchAction;
   });
 
-  if (loading) return <div style={{textAlign:"center", color:C.muted}}>⏳ جاري التحميل...</div>;
+  if (loading) return <div style={{textAlign:"center", color:C.muted}}>⏳ جاري تحميل السجل...</div>;
+  
+  if (errorMsg) return (
+    <Card className="anim no-print">
+       <div style={{color: C.red, textAlign: "center", padding: 20}}>⚠️ {errorMsg}</div>
+    </Card>
+  );
+
   return (
     <Card className="anim no-print">
       <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>سجل التدقيق المالي</div>
@@ -407,7 +423,7 @@ function AuditLogsManager() {
             {label: "جميع الحركات المالية", value: "all"},
             {label: "🟢 أموال داخلة (إيرادات وتبرعات)", value: "income"},
             {label: "🔴 أموال خارجة (مصروفات ومساعدات)", value: "expense"},
-            {label: "🟡 قيود الديون (سلف، تعديلات، اشتراكات)", value: "debt"}
+            {label: "🟡 قيود الديون (سلف وتعديلات واشتراكات)", value: "debt"}
           ]} 
         />
       </div>
@@ -417,9 +433,9 @@ function AuditLogsManager() {
           <table style={{width:"100%", textAlign:"right", borderCollapse:"collapse", minWidth:800}}>
             <thead><tr style={{borderBottom:`1px solid ${C.border}`, color:C.muted, fontSize:12}}><th style={{padding:12}}>التاريخ والوقت</th><th style={{padding:12}}>الإجراء</th><th style={{padding:12}}>العضو المستهدف</th><th style={{padding:12}}>المبلغ والتأثير</th><th style={{padding:12}}>السبب / الملاحظات</th></tr></thead>
             <tbody>
-              {filteredLogs.map((log, idx) => {
+              {filteredLogs.map((log, index) => {
                 const val = parseFloat(log.amount) || 0;
-                const actionStr = log.action || 'إجراء غير معروف'; // 💡 حماية من الانهيار أثناء العرض
+                const actionStr = String(log.action || 'إجراء غير معروف');
                 
                 let displayColor = C.text;
                 let displayAmount = val;
@@ -442,7 +458,7 @@ function AuditLogsManager() {
                 }
 
                 return ( 
-                  <tr key={log.id || idx} style={{borderBottom:`1px solid ${C.border}50`}}>
+                  <tr key={log.id || index} style={{borderBottom:`1px solid ${C.border}50`}}>
                     <td style={{padding:12, fontSize:12, color:C.dim, textAlign:"right"} } dir="ltr">{log.created_at ? new Date(log.created_at).toLocaleString('en-GB') : '---'}</td>
                     <td style={{padding:12}}><Tag label={actionStr} color={displayColor === C.gold ? '#eab308' : displayColor} /></td>
                     <td style={{padding:12, fontSize:13, fontWeight:700}}>{log.full_name || 'عضو غير معروف'}</td>
