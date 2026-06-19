@@ -226,7 +226,7 @@ function OperationsManager() {
         )}
       </Card>
 
-      <Card style={{ border Top:`3px solid ${C.accent}`}}>
+      <Card style={{ borderTop:`3px solid ${C.accent}`}}>
         <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>طلبات السلف والمساعدات</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {requests.map(req => (
@@ -340,7 +340,6 @@ function MembersManager() {
 }
 
 // ── Audit Logs Manager ──
-// 💡 تم إصلاح الحماية الدفاعية هنا لمنع انهيار الشاشة
 function AuditLogsManager() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -351,34 +350,24 @@ function AuditLogsManager() {
     const fetchLogs = async () => { 
       try { 
         const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; 
-        const res = await fetch(`${apiUrl}/api/admin/audit-logs`, { headers: getAuthHeaders() });
-        const data = await res.json();
-        if (res.ok) {
-          setLogs(Array.isArray(data) ? data : []);
-        } else {
-          setLogs([]);
-        }
-      } catch (err) { setLogs([]); } finally { setLoading(false); } 
+        const res = await fetch(`${apiUrl}/api/admin/audit-logs`, { headers: getAuthHeaders() }); 
+        if (res.ok) setLogs(await res.json()); 
+      } catch (err) {} finally { setLoading(false); } 
     };
     fetchLogs();
   }, []);
 
   const filteredLogs = logs.filter(log => {
-    // 💡 الحماية: إذا كان الحقل فارغاً في قاعدة البيانات، استبدله بنص فارغ لتجنب الخطأ
-    const actionStr = log.action || '';
-    const reasonStr = log.reason || '';
-    const nameStr = log.full_name || '';
-
-    const matchSearch = nameStr.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                        reasonStr.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchSearch = (log.full_name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        (log.reason || '').toLowerCase().includes(searchQuery.toLowerCase());
     
     let matchAction = true;
     if (actionFilter === "income") {
-      matchAction = actionStr.includes('إيصال') || actionStr.includes('تبرع');
+      matchAction = log.action.includes('إيصال') || log.action.includes('تبرع');
     } else if (actionFilter === "expense") {
-      matchAction = actionStr.includes('مصروف') || actionStr.includes('مساعدة');
+      matchAction = log.action.includes('مصروف') || log.action.includes('مساعدة');
     } else if (actionFilter === "debt") {
-      matchAction = actionStr.includes('ذمة') || actionStr.includes('سلفة') || actionStr.includes('تعديل') || actionStr.includes('اشتراك');
+      matchAction = log.action.includes('ذمة') || log.action.includes('سلفة') || log.action.includes('تعديل');
     }
 
     return matchSearch && matchAction;
@@ -407,7 +396,7 @@ function AuditLogsManager() {
             {label: "جميع الحركات المالية", value: "all"},
             {label: "🟢 أموال داخلة (إيرادات وتبرعات)", value: "income"},
             {label: "🔴 أموال خارجة (مصروفات ومساعدات)", value: "expense"},
-            {label: "🟡 قيود الديون (سلف، تعديلات، اشتراكات)", value: "debt"}
+            {label: "🟡 قيود الديون (سلف وتعديلات)", value: "debt"}
           ]} 
         />
       </div>
@@ -417,23 +406,21 @@ function AuditLogsManager() {
           <table style={{width:"100%", textAlign:"right", borderCollapse:"collapse", minWidth:800}}>
             <thead><tr style={{borderBottom:`1px solid ${C.border}`, color:C.muted, fontSize:12}}><th style={{padding:12}}>التاريخ والوقت</th><th style={{padding:12}}>الإجراء</th><th style={{padding:12}}>العضو المستهدف</th><th style={{padding:12}}>المبلغ والتأثير</th><th style={{padding:12}}>السبب / الملاحظات</th></tr></thead>
             <tbody>
-              {filteredLogs.map((log, idx) => {
-                const val = parseFloat(log.amount) || 0;
-                const actionStr = log.action || 'إجراء غير معروف'; // 💡 حماية من الانهيار أثناء العرض
-                
+              {filteredLogs.map(log => {
+                const val = parseFloat(log.amount);
                 let displayColor = C.text;
-                let displayAmount = val;
+                let displayAmount = log.amount;
 
-                if (actionStr.includes('إيصال') || actionStr.includes('تبرع')) {
+                if (log.action.includes('إيصال') || log.action.includes('تبرع')) {
                     displayColor = C.green;
                     displayAmount = `+ ${Math.abs(val)} د.أ (إيراد)`;
-                } else if (actionStr.includes('مصروف') || actionStr.includes('مساعدة')) {
+                } else if (log.action.includes('مصروف') || log.action.includes('مساعدة')) {
                     displayColor = C.red;
                     displayAmount = `- ${Math.abs(val)} د.أ (سحب)`;
-                } else if (actionStr.includes('ذمة') || actionStr.includes('سلفة') || actionStr.includes('اشتراك')) {
+                } else if (log.action.includes('ذمة') || log.action.includes('سلفة')) {
                     displayColor = C.gold;
                     displayAmount = `+ ${Math.abs(val)} د.أ (قيد دين)`;
-                } else if (actionStr.includes('تعديل')) {
+                } else if (log.action.includes('تعديل')) {
                     displayColor = val > 0 ? C.gold : C.green;
                     displayAmount = val > 0 ? `+ ${Math.abs(val)} د.أ (قيد دين)` : `- ${Math.abs(val)} د.أ (إسقاط دين)`;
                 } else {
@@ -442,9 +429,9 @@ function AuditLogsManager() {
                 }
 
                 return ( 
-                  <tr key={log.id || idx} style={{borderBottom:`1px solid ${C.border}50`}}>
-                    <td style={{padding:12, fontSize:12, color:C.dim, textAlign:"right"} } dir="ltr">{log.created_at ? new Date(log.created_at).toLocaleString('en-GB') : '---'}</td>
-                    <td style={{padding:12}}><Tag label={actionStr} color={displayColor === C.gold ? '#eab308' : displayColor} /></td>
+                  <tr key={log.id} style={{borderBottom:`1px solid ${C.border}50`}}>
+                    <td style={{padding:12, fontSize:12, color:C.dim, textAlign:"right"} } dir="ltr">{new Date(log.created_at).toLocaleString('en-GB')}</td>
+                    <td style={{padding:12}}><Tag label={log.action} color={displayColor === C.gold ? '#eab308' : displayColor} /></td>
                     <td style={{padding:12, fontSize:13, fontWeight:700}}>{log.full_name || 'عضو غير معروف'}</td>
                     <td style={{padding:12, fontFamily:"'IBM Plex Mono'", fontWeight:700, color: displayColor}}>
                       <span dir="ltr">{displayAmount}</span>
