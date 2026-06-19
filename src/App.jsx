@@ -15,11 +15,7 @@ const G = `
 
   @media print {
     .no-print { display: none !important; }
-    .print-only { display: block !important; position: absolute; inset: 0; background: white; color: black; z-index: 9999; padding: 40px; font-family:'Tajawal',sans-serif; direction:rtl; min-height:100vh; }
-    body { background: white; margin: 0; padding: 0; }
-  }
-  @media screen {
-    .print-only { display: none !important; }
+    body { background: white; color: black; }
   }
 `;
 
@@ -339,7 +335,7 @@ function MembersManager() {
   );
 }
 
-// ── Audit Logs Manager (المحمية بالكامل) ──
+// ── Audit Logs Manager ──
 function AuditLogsManager() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -570,6 +566,7 @@ function AdminDashboard({ onLogout }) {
 
   const [reportYear, setReportYear] = useState(currentYear.toString());
   const [isGenerating, setIsGenerating] = useState(false);
+  const [printData, setPrintData] = useState(null);
 
   const downloadReportCSV = async () => {
     try {
@@ -594,7 +591,7 @@ function AdminDashboard({ onLogout }) {
     } catch (err) { alert("تعذر تحميل التقرير"); }
   };
 
-  // 💡 تم إصلاح مشكلة الشاشة البيضاء أثناء الطباعة باستخدام نظام iframe بدلاً من window.open
+  // 💡 حل مشكلة الشاشة البيضاء عن طريق استخدام عرض حقيقي ملء الشاشة بدلاً من النوافذ المنبثقة
   const generateAnnualPDF = async () => {
     setIsGenerating(true);
     try {
@@ -602,127 +599,80 @@ function AdminDashboard({ onLogout }) {
       const res = await fetch(`${apiUrl}/api/admin/reports/annual?year=${reportYear}`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
-        
-        let expensesHtml = '';
-        if (data.expenses_breakdown.length === 0) {
-          expensesHtml = `<tr><td colspan="2" style="text-align:center; color:#64748b; padding:10px; border:1px solid #ccc;">لا توجد مصروفات مسجلة هذا العام</td></tr>`;
-        } else {
-          expensesHtml = data.expenses_breakdown.map(exp => `
-            <tr>
-              <td style="border:1px solid #ccc; padding:10px;">${exp.category === 'wedding' ? 'نقوط زواج' : exp.category === 'condolence' ? 'مساعدة عزاء' : 'سلفة/أخرى'}</td>
-              <td style="border:1px solid #ccc; padding:10px; font-weight:bold;">${exp.total} د.أ</td>
-            </tr>
-          `).join('');
-        }
-
-        const htmlContent = `
-          <html dir="rtl">
-            <head>
-              <title>التقرير المالي السنوي - ${data.year}</title>
-              <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
-              <style>
-                body { font-family: 'Tajawal', sans-serif; padding: 40px; color: #111827; background: #fff; }
-                .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-                .header h1 { margin: 0; font-size: 32px; color: #1e2d44; }
-                .header h2 { margin: 10px 0 0; color: #475569; font-size: 20px; }
-                .header p { font-size: 12px; color: #94a3b8; margin-top: 10px; }
-                
-                .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px; }
-                .summary-card { border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; }
-                .summary-card h3 { margin-top: 0; color: #334155; font-size: 16px; }
-                .summary-card p { font-size: 24px; font-weight: bold; margin: 10px 0; }
-                .income-text { color: #10b981; }
-                .expense-text { color: #ef4444; }
-
-                table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
-                th, td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; }
-                th { background: #f1f5f9; color: #334155; font-size: 14px; }
-                td { font-size: 14px; }
-
-                .kpi-section { display: flex; justify-content: space-between; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; }
-                .kpi-item { display: flex; flex-direction: column; gap: 5px; }
-                .kpi-label { font-size: 14px; color: #475569; }
-                .kpi-val { font-size: 22px; font-weight: bold; color: #0f172a; }
-                .kpi-val.warn { color: #eab308; }
-
-                .footer { margin-top: 60px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px; }
-              </style>
-            </head>
-            <body>
-              <div class="header">
-                <h1>صندوق عائلة قطيفان التعاوني</h1>
-                <h2>التقرير المالي السنوي الشامل لعام ${data.year}</h2>
-                <p>تاريخ الإصدار: ${new Date().toLocaleDateString('ar-JO')}</p>
-              </div>
-
-              <div class="summary-grid">
-                <div class="summary-card">
-                  <h3>ملخص إيرادات ${data.year}</h3>
-                  <p class="income-text">${data.total_income} د.أ</p>
-                  <div style="font-size:12px; color:#64748b; margin-top:5px;">
-                    (اشتراكات: ${data.total_subscriptions} د.أ | تبرعات: ${data.total_donations} د.أ)
-                  </div>
-                </div>
-                <div class="summary-card">
-                  <h3>ملخص مصروفات ${data.year}</h3>
-                  <p class="expense-text">${data.total_expenses} د.أ</p>
-                </div>
-              </div>
-
-              <h3 style="color:#1e2d44; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">تفصيل المصروفات حسب البند</h3>
-              <table>
-                <thead>
-                  <tr><th>بند الصرف</th><th>المبلغ الإجمالي</th></tr>
-                </thead>
-                <tbody>
-                  ${expensesHtml}
-                </tbody>
-              </table>
-
-              <h3 style="color:#1e2d44; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">الحالة المالية التراكمية للصندوق (حتى اللحظة)</h3>
-              <div class="kpi-section">
-                <div class="kpi-item">
-                  <span class="kpi-label">إجمالي الديون غير المحصلة من الأعضاء:</span>
-                  <span class="kpi-val warn">${data.total_debt} د.أ</span>
-                </div>
-                <div class="kpi-item">
-                  <span class="kpi-label">عدد الأعضاء النشطين حالياً:</span>
-                  <span class="kpi-val">${data.active_members} عضو</span>
-                </div>
-              </div>
-
-              <div class="footer">
-                هذا التقرير مُصدَر إلكترونياً من نظام إدارة صندوق العائلة ولا يحتاج إلى ختم.
-              </div>
-            </body>
-          </html>
-        `;
-
-        let printIframe = document.getElementById("admin-pdf-iframe");
-        if (printIframe) printIframe.remove();
-        printIframe = document.createElement("iframe");
-        printIframe.id = "admin-pdf-iframe";
-        printIframe.style.position = "absolute";
-        printIframe.style.width = "0px";
-        printIframe.style.height = "0px";
-        printIframe.style.border = "none";
-        printIframe.style.visibility = "hidden";
-        
-        document.body.appendChild(printIframe);
-        const iframeDoc = printIframe.contentWindow.document;
-        iframeDoc.open();
-        iframeDoc.write(htmlContent);
-        iframeDoc.close();
-
-        setTimeout(() => {
-          printIframe.contentWindow.focus();
-          printIframe.contentWindow.print();
-        }, 800);
-
+        setPrintData(data);
+        setTimeout(() => window.print(), 500);
       } else alert("حدث خطأ أثناء استخراج التقرير");
     } catch (err) { alert("تعذر الاتصال بالسيرفر"); }
     setIsGenerating(false);
   };
+
+  // 🖨️ شاشة طباعة التقرير السنوي
+  if (printData) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 99999, overflowY: 'auto', background: '#fff', color: '#111827', padding: '30px', fontFamily: "'Tajawal', sans-serif", direction: 'rtl' }}>
+        <div className="no-print" style={{ display: 'flex', gap: 10, marginBottom: 30 }}>
+          <button onClick={() => setPrintData(null)} style={{ padding: '10px 20px', background: '#e2e8f0', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold', color: '#334155' }}>🔙 العودة للوحة الإدارة</button>
+          <button onClick={() => window.print()} style={{ padding: '10px 20px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>🖨️ طباعة التقرير</button>
+        </div>
+
+        <div style={{ textAlign: 'center', borderBottom: '2px solid #333', paddingBottom: 20, marginBottom: 30 }}>
+          <h1 style={{ margin: 0, fontSize: 28, color: '#1e2d44' }}>صندوق عائلة قطيفان التعاوني</h1>
+          <h2 style={{ margin: '10px 0 0', color: '#475569', fontSize: 18 }}>التقرير المالي السنوي الشامل لعام {printData.year}</h2>
+          <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 10 }}>تاريخ الإصدار: {new Date().toLocaleDateString('ar-JO')}</p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 40 }}>
+          <div style={{ border: '1px solid #e2e8f0', padding: 20, borderRadius: 8 }}>
+            <h3 style={{ marginTop: 0, color: '#334155', fontSize: 16 }}>ملخص إيرادات {printData.year}</h3>
+            <p style={{ color: '#10b981', fontSize: 24, fontWeight: 'bold', margin: '10px 0' }}>{printData.total_income} د.أ</p>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 5 }}>(اشتراكات: {printData.total_subscriptions} د.أ | تبرعات: {printData.total_donations} د.أ)</div>
+          </div>
+          <div style={{ border: '1px solid #e2e8f0', padding: 20, borderRadius: 8 }}>
+            <h3 style={{ marginTop: 0, color: '#334155', fontSize: 16 }}>ملخص مصروفات {printData.year}</h3>
+            <p style={{ color: '#ef4444', fontSize: 24, fontWeight: 'bold', margin: '10px 0' }}>{printData.total_expenses} د.أ</p>
+          </div>
+        </div>
+
+        <h3 style={{ color: '#1e2d44', borderBottom: '1px solid #e2e8f0', paddingBottom: 10 }}>تفصيل المصروفات حسب البند</h3>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 40 }}>
+          <thead>
+            <tr>
+              <th style={{ border: '1px solid #cbd5e1', padding: 12, textAlign: 'right', background: '#f1f5f9' }}>بند الصرف</th>
+              <th style={{ border: '1px solid #cbd5e1', padding: 12, textAlign: 'right', background: '#f1f5f9' }}>المبلغ الإجمالي</th>
+            </tr>
+          </thead>
+          <tbody>
+            {printData.expenses_breakdown.length === 0 ? (
+              <tr><td colSpan="2" style={{ textAlign: 'center', color: '#64748b', padding: 10, border: '1px solid #cbd5e1' }}>لا توجد مصروفات مسجلة هذا العام</td></tr>
+            ) : (
+              printData.expenses_breakdown.map((exp, idx) => (
+                <tr key={idx}>
+                  <td style={{ border: '1px solid #cbd5e1', padding: 10 }}>{exp.category === 'wedding' ? 'نقوط زواج' : exp.category === 'condolence' ? 'مساعدة عزاء' : 'سلفة/أخرى'}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: 10, fontWeight: 'bold' }}>{exp.total} د.أ</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+
+        <h3 style={{ color: '#1e2d44', borderBottom: '1px solid #e2e8f0', paddingBottom: 10 }}>الحالة المالية التراكمية للصندوق (حتى اللحظة)</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', background: '#f8fafc', padding: 20, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <span style={{ fontSize: 14, color: '#475569' }}>إجمالي الديون غير المحصلة من الأعضاء:</span>
+            <span style={{ fontSize: 22, fontWeight: 'bold', color: '#eab308' }}>{printData.total_debt} د.أ</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <span style={{ fontSize: 14, color: '#475569' }}>عدد الأعضاء النشطين حالياً:</span>
+            <span style={{ fontSize: 22, fontWeight: 'bold', color: '#0f172a' }}>{printData.active_members} عضو</span>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 60, textAlign: 'center', fontSize: 12, color: '#94a3b8', borderTop: '1px solid #f1f5f9', paddingTop: 20 }}>
+          هذا التقرير مُصدَر إلكترونياً من نظام إدارة صندوق العائلة ولا يحتاج إلى ختم.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="anim no-print" style={{padding:"20px", maxWidth:900, margin:"0 auto"}}>
