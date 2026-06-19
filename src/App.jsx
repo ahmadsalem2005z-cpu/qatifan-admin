@@ -111,8 +111,21 @@ function OperationsManager() {
   };
   
   const handleApprove = async (receiptId) => {
-    const amountStr = window.prompt("كم القيمة المودعة؟ (2 دينار = 1 شهر)", "2"); if (amountStr === null) return; const amount = parseFloat(amountStr); if (isNaN(amount) || amount <= 0) return alert("مبلغ غير صحيح");
-    try { const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; const res = await fetch(`${apiUrl}/api/admin/approve-receipt/${receiptId}`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ amount }) }); if (res.ok) { setPendingReceipts(prev => prev.filter(rec => rec.id !== receiptId)); alert("تم الاعتماد"); } } catch (err) { }
+    const amountStr = window.prompt("كم القيمة المودعة بالدينار؟ (النظام سيحسب الأشهر تلقائياً)", "2"); 
+    if (amountStr === null) return; 
+    const amount = parseFloat(amountStr); 
+    if (isNaN(amount) || amount <= 0) return alert("مبلغ غير صحيح");
+    try { 
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; 
+      const res = await fetch(`${apiUrl}/api/admin/approve-receipt/${receiptId}`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ amount }) }); 
+      if (res.ok) { 
+        setPendingReceipts(prev => prev.filter(rec => rec.id !== receiptId)); 
+        alert("تم الاعتماد بنجاح وتحديث تاريخ التغطية"); 
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || "تعذر الاعتماد");
+      }
+    } catch (err) { alert("حدث خطأ في الاتصال"); }
   };
   
   const handleRejectReceipt = async (receiptId) => {
@@ -122,7 +135,7 @@ function OperationsManager() {
   
   const handleAddExpense = async () => {
     if (!expLabel || !expAmount) return; setIsSubmittingExp(true);
-    try { const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; const res = await fetch(`${apiUrl}/api/admin/expenses`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ category: expCategory, label: expLabel, amount: expAmount }) }); if (res.ok) { alert("تم"); setShowExpenseForm(false); } } catch (err) {} setIsSubmittingExp(false);
+    try { const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; const res = await fetch(`${apiUrl}/api/admin/expenses`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ category: expCategory, label: expLabel, amount: expAmount }) }); if (res.ok) { alert("تم تسجيل المصروف في سجل التدقيق بنجاح"); setShowExpenseForm(false); } } catch (err) {} setIsSubmittingExp(false);
   };
   
   const handleAddAnnouncement = async () => {
@@ -326,7 +339,7 @@ function MembersManager() {
   );
 }
 
-// ── Audit Logs Manager (المحمية بالكامل 🛡️) ──
+// ── Audit Logs Manager (المحمية بالكامل) ──
 function AuditLogsManager() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -355,7 +368,6 @@ function AuditLogsManager() {
 
   const filteredLogs = safeLogs.filter(log => {
     if (!log) return false;
-    // تم تأمين جميع المتغيرات لتكون Strings ولا تنفجر أبداً
     const actionStr = String(log.action || '');
     const reasonStr = String(log.reason || '');
     const nameStr = String(log.full_name || '');
@@ -582,6 +594,7 @@ function AdminDashboard({ onLogout }) {
     } catch (err) { alert("تعذر تحميل التقرير"); }
   };
 
+  // 💡 تم إصلاح مشكلة الشاشة البيضاء أثناء الطباعة باستخدام نظام iframe بدلاً من window.open
   const generateAnnualPDF = async () => {
     setIsGenerating(true);
     try {
@@ -589,8 +602,6 @@ function AdminDashboard({ onLogout }) {
       const res = await fetch(`${apiUrl}/api/admin/reports/annual?year=${reportYear}`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
-        
-        const printWindow = window.open('', '_blank');
         
         let expensesHtml = '';
         if (data.expenses_breakdown.length === 0) {
@@ -686,14 +697,26 @@ function AdminDashboard({ onLogout }) {
             </body>
           </html>
         `;
+
+        let printIframe = document.getElementById("admin-pdf-iframe");
+        if (printIframe) printIframe.remove();
+        printIframe = document.createElement("iframe");
+        printIframe.id = "admin-pdf-iframe";
+        printIframe.style.position = "absolute";
+        printIframe.style.width = "0px";
+        printIframe.style.height = "0px";
+        printIframe.style.border = "none";
+        printIframe.style.visibility = "hidden";
         
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-        
+        document.body.appendChild(printIframe);
+        const iframeDoc = printIframe.contentWindow.document;
+        iframeDoc.open();
+        iframeDoc.write(htmlContent);
+        iframeDoc.close();
+
         setTimeout(() => {
-          printWindow.focus();
-          printWindow.print();
-          printWindow.close();
+          printIframe.contentWindow.focus();
+          printIframe.contentWindow.print();
         }, 800);
 
       } else alert("حدث خطأ أثناء استخراج التقرير");
