@@ -1,21 +1,46 @@
 import { useState, useEffect } from "react";
 
-// ── Global styles ─────────────────────────────────────────────────────────
 const G = `
   @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap');
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{direction:rtl;font-family:'Tajawal',sans-serif;background:#050505;color:#f8fafc}
-  ::-webkit-scrollbar{width:6px}
-  ::-webkit-scrollbar-track{background:#050505}
-  ::-webkit-scrollbar-thumb{background:#334155;border-radius:4px}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:none}}
-  .anim{animation:fadeUp .4s ease both}
-  .tab-btn { background:none; border:none; color:#64748b; font-family:'Tajawal',sans-serif; font-size:15px; font-weight:700; padding:10px 20px; cursor:pointer; border-bottom:3px solid transparent; transition:all .2s; }
-  .tab-btn.active { color:#8b5cf6; border-bottom:3px solid #8b5cf6; }
+  
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; margin: 0; padding: 0; }
+  body { direction: rtl; font-family: 'Tajawal', sans-serif; background: #050505; color: #f8fafc; }
+  
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #050505; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+  
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: none; } }
+  .anim { animation: fadeUp .4s ease both; }
+  
+  .tab-btn { background: none; border: none; color: #64748b; font-family: 'Tajawal', sans-serif; font-size: 15px; font-weight: 700; padding: 10px 20px; cursor: pointer; border-bottom: 3px solid transparent; transition: all .2s; }
+  .tab-btn.active { color: #8b5cf6; border-bottom: 3px solid #8b5cf6; }
 
+  /* 💡 الكلاس السحري لطباعة التقارير */
+  .print-view {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    overflow-y: auto;
+    background: #fff;
+    color: #111827;
+    padding: 30px;
+    font-family: 'Tajawal', sans-serif;
+    direction: rtl;
+  }
+
+  /* 💡 إجبار المتصفح على الطباعة السليمة */
   @media print {
     .no-print { display: none !important; }
-    body { background: white; color: black; }
+    body, html { background: white !important; color: black !important; }
+    main { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+    .print-view {
+      position: static !important;
+      overflow: visible !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
   }
 `;
 
@@ -65,7 +90,7 @@ function AdminLogin({ onLogin }) {
     } catch (err) { setError("تعذر الاتصال"); } setLoading(false);
   };
   return (
-    <div className="anim" style={{minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:20}}><style>{G}</style><Card style={{width:"100%", maxWidth:360, textAlign:"center", padding:"40px 20px"}}><div style={{fontSize:54, marginBottom:16}}>👑</div><h2 style={{color:C.text, marginBottom:8}}>بوابة الإدارة</h2>{error && <div style={{color:C.red, fontSize:12, marginBottom:16, background:`${C.red}20`, padding:8, borderRadius:8}}>{error}</div>}<Input type="text" placeholder="اسم المستخدم" value={username} onChange={setUsername} /><Input type="password" placeholder="كلمة المرور" value={password} onChange={setPassword} /><Btn onClick={handleLogin} style={{width:"100%", marginTop:10}} variant="primary">{loading ? "⏳..." : "دخول"}</Btn></Card></div>
+    <div className="anim no-print" style={{minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:20}}><style>{G}</style><Card style={{width:"100%", maxWidth:360, textAlign:"center", padding:"40px 20px"}}><div style={{fontSize:54, marginBottom:16}}>👑</div><h2 style={{color:C.text, marginBottom:8}}>بوابة الإدارة</h2>{error && <div style={{color:C.red, fontSize:12, marginBottom:16, background:`${C.red}20`, padding:8, borderRadius:8}}>{error}</div>}<Input type="text" placeholder="اسم المستخدم" value={username} onChange={setUsername} /><Input type="password" placeholder="كلمة المرور" value={password} onChange={setPassword} /><Btn onClick={handleLogin} style={{width:"100%", marginTop:10}} variant="primary">{loading ? "⏳..." : "دخول"}</Btn></Card></div>
   );
 }
 
@@ -116,7 +141,7 @@ function OperationsManager() {
       const res = await fetch(`${apiUrl}/api/admin/approve-receipt/${receiptId}`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ amount }) }); 
       if (res.ok) { 
         setPendingReceipts(prev => prev.filter(rec => rec.id !== receiptId)); 
-        alert("تم الاعتماد بنجاح وتحديث تاريخ التغطية"); 
+        alert("تم الاعتماد بنجاح وتحديث تاريخ التغطية وتصفير الديون القديمة"); 
       } else {
         const errorData = await res.json();
         alert(errorData.error || "تعذر الاعتماد");
@@ -591,7 +616,6 @@ function AdminDashboard({ onLogout }) {
     } catch (err) { alert("تعذر تحميل التقرير"); }
   };
 
-  // 💡 حل مشكلة الشاشة البيضاء عن طريق استخدام عرض حقيقي ملء الشاشة بدلاً من النوافذ المنبثقة
   const generateAnnualPDF = async () => {
     setIsGenerating(true);
     try {
@@ -606,10 +630,9 @@ function AdminDashboard({ onLogout }) {
     setIsGenerating(false);
   };
 
-  // 🖨️ شاشة طباعة التقرير السنوي
   if (printData) {
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 99999, overflowY: 'auto', background: '#fff', color: '#111827', padding: '30px', fontFamily: "'Tajawal', sans-serif", direction: 'rtl' }}>
+      <div className="print-view">
         <div className="no-print" style={{ display: 'flex', gap: 10, marginBottom: 30 }}>
           <button onClick={() => setPrintData(null)} style={{ padding: '10px 20px', background: '#e2e8f0', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold', color: '#334155' }}>🔙 العودة للوحة الإدارة</button>
           <button onClick={() => window.print()} style={{ padding: '10px 20px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>🖨️ طباعة التقرير</button>
