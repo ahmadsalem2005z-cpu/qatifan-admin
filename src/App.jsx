@@ -111,21 +111,8 @@ function OperationsManager() {
   };
   
   const handleApprove = async (receiptId) => {
-    const amountStr = window.prompt("كم القيمة المودعة بالدينار؟ (النظام سيحسب الأشهر تلقائياً)", "2"); 
-    if (amountStr === null) return; 
-    const amount = parseFloat(amountStr); 
-    if (isNaN(amount) || amount <= 0) return alert("مبلغ غير صحيح");
-    try { 
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; 
-      const res = await fetch(`${apiUrl}/api/admin/approve-receipt/${receiptId}`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ amount }) }); 
-      if (res.ok) { 
-        setPendingReceipts(prev => prev.filter(rec => rec.id !== receiptId)); 
-        alert("تم الاعتماد بنجاح وتحديث تاريخ التغطية"); 
-      } else {
-        const errorData = await res.json();
-        alert(errorData.error || "تعذر الاعتماد");
-      }
-    } catch (err) { alert("حدث خطأ في الاتصال"); }
+    const amountStr = window.prompt("كم القيمة المودعة؟ (2 دينار = 1 شهر)", "2"); if (amountStr === null) return; const amount = parseFloat(amountStr); if (isNaN(amount) || amount <= 0) return alert("مبلغ غير صحيح");
+    try { const apiUrl = import.meta.env.VITE_API_URL || 'https://qatifan-fund-production.up.railway.app'; const res = await fetch(`${apiUrl}/api/admin/approve-receipt/${receiptId}`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ amount }) }); if (res.ok) { setPendingReceipts(prev => prev.filter(rec => rec.id !== receiptId)); alert("تم الاعتماد"); } } catch (err) { }
   };
   
   const handleRejectReceipt = async (receiptId) => {
@@ -226,7 +213,7 @@ function OperationsManager() {
         )}
       </Card>
 
-      <Card style={{ border Top:`3px solid ${C.accent}`}}>
+      <Card style={{ borderTop:`3px solid ${C.accent}`}}>
         <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>طلبات السلف والمساعدات</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {requests.map(req => (
@@ -345,7 +332,6 @@ function AuditLogsManager() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
-  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     const fetchLogs = async () => { 
@@ -354,14 +340,10 @@ function AuditLogsManager() {
         const res = await fetch(`${apiUrl}/api/admin/audit-logs`, { headers: getAuthHeaders() }); 
         const data = await res.json();
         if (res.ok) {
-           setLogs(Array.isArray(data) ? data : []);
-        } else {
-           setErrorMsg(data.error || "خطأ في جلب البيانات من السيرفر");
-           setLogs([]);
+          setLogs(Array.isArray(data) ? data : []);
         }
-      } catch (err) { 
-        setErrorMsg("فشل الاتصال بالسيرفر. تأكد من الإنترنت.");
-        setLogs([]); 
+      } catch (err) {
+        console.error("Fetch Error:", err);
       } finally { 
         setLoading(false); 
       } 
@@ -370,10 +352,10 @@ function AuditLogsManager() {
   }, []);
 
   const safeLogs = Array.isArray(logs) ? logs : [];
-  
+
   const filteredLogs = safeLogs.filter(log => {
     if (!log) return false;
-    // حماية تحويل القيم إلى نصوص String() لتجنب خطأ الـ null نهائياً
+    // تم تأمين جميع المتغيرات لتكون Strings ولا تنفجر أبداً
     const actionStr = String(log.action || '');
     const reasonStr = String(log.reason || '');
     const nameStr = String(log.full_name || '');
@@ -393,14 +375,8 @@ function AuditLogsManager() {
     return matchSearch && matchAction;
   });
 
-  if (loading) return <div style={{textAlign:"center", color:C.muted}}>⏳ جاري تحميل السجل...</div>;
+  if (loading) return <div style={{textAlign:"center", color:C.muted}}>⏳ جاري التحميل...</div>;
   
-  if (errorMsg) return (
-    <Card className="anim no-print">
-       <div style={{color: C.red, textAlign: "center", padding: 20}}>⚠️ {errorMsg}</div>
-    </Card>
-  );
-
   return (
     <Card className="anim no-print">
       <div style={{fontSize:15, fontWeight:700, marginBottom:16, color:C.text}}>سجل التدقيق المالي</div>
@@ -423,20 +399,19 @@ function AuditLogsManager() {
             {label: "جميع الحركات المالية", value: "all"},
             {label: "🟢 أموال داخلة (إيرادات وتبرعات)", value: "income"},
             {label: "🔴 أموال خارجة (مصروفات ومساعدات)", value: "expense"},
-            {label: "🟡 قيود الديون (سلف وتعديلات واشتراكات)", value: "debt"}
+            {label: "🟡 قيود الديون (سلف وتعديلات)", value: "debt"}
           ]} 
         />
       </div>
 
-      {filteredLogs.length === 0 ? <div style={{textAlign:"center", color:C.dim, padding:20}}>لا توجد حركات تطابق شروط البحث.</div> : (
+      {filteredLogs.length === 0 ? <div style={{textAlign:"center", color:C.dim, padding:20}}>لا توجد حركات مطابقة للبحث (أو أن السجل فارغ حالياً).</div> : (
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%", textAlign:"right", borderCollapse:"collapse", minWidth:800}}>
             <thead><tr style={{borderBottom:`1px solid ${C.border}`, color:C.muted, fontSize:12}}><th style={{padding:12}}>التاريخ والوقت</th><th style={{padding:12}}>الإجراء</th><th style={{padding:12}}>العضو المستهدف</th><th style={{padding:12}}>المبلغ والتأثير</th><th style={{padding:12}}>السبب / الملاحظات</th></tr></thead>
             <tbody>
-              {filteredLogs.map((log, index) => {
+              {filteredLogs.map((log, idx) => {
                 const val = parseFloat(log.amount) || 0;
                 const actionStr = String(log.action || 'إجراء غير معروف');
-                
                 let displayColor = C.text;
                 let displayAmount = val;
 
@@ -458,7 +433,7 @@ function AuditLogsManager() {
                 }
 
                 return ( 
-                  <tr key={log.id || index} style={{borderBottom:`1px solid ${C.border}50`}}>
+                  <tr key={log.id || idx} style={{borderBottom:`1px solid ${C.border}50`}}>
                     <td style={{padding:12, fontSize:12, color:C.dim, textAlign:"right"} } dir="ltr">{log.created_at ? new Date(log.created_at).toLocaleString('en-GB') : '---'}</td>
                     <td style={{padding:12}}><Tag label={actionStr} color={displayColor === C.gold ? '#eab308' : displayColor} /></td>
                     <td style={{padding:12, fontSize:13, fontWeight:700}}>{log.full_name || 'عضو غير معروف'}</td>
